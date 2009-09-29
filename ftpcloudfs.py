@@ -144,8 +144,15 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
                 
         raise OSError(2, 'No such file or directory.')
 
-    def mkdir(self):
-        pass #TODO
+    def mkdir(self, path):
+        try:
+            username, container, obj = self.parse_fspath(path)
+            if obj:
+                raise OSError(1, 'Operation not permitted')
+        except(ValueError):
+            raise OSError(2, 'No such file or directory')
+
+        operations.connection.create_container(container)
 
     def listdir(self, path):
         try:
@@ -206,7 +213,6 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
 
     def stat(self, path):
         username, container, name = self.parse_fspath(path)
-
         if not name:
             raise OSError(40, 'unsupported')            
         try:
