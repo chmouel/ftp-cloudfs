@@ -200,9 +200,8 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         return not name
 
     def rename(self, src, dst):
-        #TODO:
-        pass
-
+        raise OSError(1, 'Operation not permitted')
+    
     def isfile(self, path):
         return not self.isdir(path)
 
