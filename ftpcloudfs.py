@@ -1,3 +1,10 @@
+#/usr/bin/env python
+#
+# Author: Chmouel Boudjnah <chmouel.boudjnah@rackspace.co.uk>
+#
+# Note: Not officially supported by Rackspace but I will be glad to
+# help you if you send me an email or leave a comment (preferred
+# method) on my blog: http://blog.chmouel.com
 import os
 import sys
 import datetime
