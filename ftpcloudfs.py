@@ -1,10 +1,10 @@
 import os
 import datetime
 import time
+import mimetypes
 
 from pyftpdlib import ftpserver
 import cloudfiles
-
 __version__ = '0.1'
 
 class CloudOperations(object):
@@ -63,14 +63,28 @@ class RackspaceCloudFilesFD(object):
             self.closed = True
             raise IOError(1, 'Operation not permitted')
 
-        self.container = operations.connection.get_container(self.container)
-        self.obj = self.container.get_object(self.name)
+        try:
+            self.container = operations.connection.get_container(self.container)
+        except(cloudfiles.errors.NoSuchContainer):
+            raise IOError(2, 'No such file or directory')
+        
+        if 'r' in self.mode:
+            try:
+                self.obj = self.container.get_object(self.name)
+            except(cloudfiles.errors.NoSuchObject):
+                raise IOError(2, 'No such file or directory')                
+        else: #write
+            self.obj = self.container.create_object(obj)
+            self.obj.content_type = mimetypes.guess_type(obj)[0]
 
+    def write(self, data):
+        if 'r' in self.mode:
+            raise OSError(1, 'Operation not permitted')
+        self.obj.write(data)
+        
     def close(self):
-        if self.closed:
-            return
         self.closed = True
-        return True
+        return 
     
     def read(self, size=65536):
         readsize=size
