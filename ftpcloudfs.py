@@ -28,8 +28,7 @@ class RackspaceCloudAuthorizer(ftpserver.DummyAuthorizer):
             operations.authenticate(username, password)
             return True
         except(cloudfiles.errors.AuthenticationFailed):
-            pass
-        return False
+            return False
             
     def has_user(self, username):
         #print '#### has_user', username
@@ -164,6 +163,66 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
             except(cloudfiles.errors.NoSuchContainer):
                 raise OSError(2, 'No such file or directory')
 
+    def rmdir(self, path):
+        #TODO:
+        pass
+
+    def remove(self, path):
+        username, container, name = self.parse_fspath(path)
+        try:
+            container = operations.connection.get_container(container)
+            obj = container.get_object(name)
+            container.delete_object(obj)
+        except(cloudfiles.errors.NoSuchContainer, cloudfiles.errors.NoSuchObject):
+            raise OSError(2, 'No such file or directory')
+        return not name
+
+    def rename(self, src, dst):
+        #TODO:
+        pass
+
+    def isfile(self, path):
+        return not self.isdir(path)
+
+    def islink(self, path):
+        return False
+
+    def isdir(self, path):
+        username, container, name = self.parse_fspath(path)
+        return not name
+
+    def getsize(self, path):
+        return self.stat(path).st_size
+
+    def getmtime(self, path):
+        return self.stat(path).st_mtime
+
+    def realpath(self, path):
+        return path
+
+    def lexists(self, path):
+        #TODO:
+        pass
+
+    def stat(self, path):
+        username, container, name = self.parse_fspath(path)
+
+        if not name:
+            raise OSError(40, 'unsupported')            
+        try:
+            container = operations.connection.get_container(container)
+            obj = container.get_object(name)
+            size = obj.size
+            return os.stat_result((666, 0L, 0L, 0, 0, 0, size, 0, 0, 0))
+        except(cloudfiles.errors.NoSuchContainer, cloudfiles.errors.NoSuchObject):
+            raise OSError(2, 'No such file or directory')
+
+    exists = lexists
+    lstat = stat
+
+    def validpath(self, path):
+        return True
+    
     def get_list_dir(self, path):
         try:
             username, container, obj = self.parse_fspath(path)
@@ -205,48 +264,6 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
     def format_mlsx(self, basedir, listing, perms, facts, ignore_err=True):
         raise OSError(40, 'unsupported')
 
-    def isdir(self, path):
-        username, container, name = self.parse_fspath(path)
-        return not name
-    
-    def lexists(self, path):
-        print "FOOOOOOOOOOO: lexists"
-
-    def realpath(self, path):
-        return path
-        
-    def stat(self, path):
-        username, container, name = self.parse_fspath(path)
-
-        if not name:
-            raise OSError(40, 'unsupported')            
-        try:
-            container = operations.connection.get_container(container)
-            obj = container.get_object(name)
-            size = obj.size
-            return os.stat_result((666, 0L, 0L, 0, 0, 0, size, 0, 0, 0))
-        except(cloudfiles.errors.NoSuchContainer, cloudfiles.errors.NoSuchObject):
-            raise OSError(2, 'No such file or directory')
-
-    def getmtime(self, path):
-        return self.stat(path).st_mtime
-
-    def getsize(self, path):
-        return self.stat(path).st_size
-
-    def remove(self, path):
-        username, container, name = self.parse_fspath(path)
-        try:
-            container = operations.connection.get_container(container)
-            obj = container.get_object(name)
-            container.delete_object(obj)
-        except(cloudfiles.errors.NoSuchContainer, cloudfiles.errors.NoSuchObject):
-            raise OSError(2, 'No such file or directory')
-        return not name
-    exists = lexists
-    lstat = stat
-
-        
 def main():
     bind = 2021
     
