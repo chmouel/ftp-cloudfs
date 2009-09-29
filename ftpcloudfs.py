@@ -144,7 +144,26 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
                 return
                 
         raise OSError(2, 'No such file or directory.')
-                
+
+    def mkdir(self):
+        pass #TODO
+
+    def listdir(self, path):
+        try:
+            username, container, obj = self.parse_fspath(path)
+        except(ValueError):
+            raise OSError(2, 'No such file or directory')
+
+        if not container and not obj:
+            return operations.connection.list_containers()
+
+        if container and not obj:
+            try:
+                cnt = operations.connection.get_container(container)
+                return cnt.list_objects()
+            except(cloudfiles.errors.NoSuchContainer):
+                raise OSError(2, 'No such file or directory')
+
     def get_list_dir(self, path):
         try:
             username, container, obj = self.parse_fspath(path)
@@ -187,12 +206,15 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         raise OSError(40, 'unsupported')
 
     def isdir(self, path):
-        username, site, filename = self.parse_fspath(path)
-        return not filename
+        username, container, name = self.parse_fspath(path)
+        return not name
     
     def lexists(self, path):
         print "FOOOOOOOOOOO: lexists"
 
+    def realpath(self, path):
+        return path
+        
     def stat(self, path):
         username, container, name = self.parse_fspath(path)
 
@@ -203,7 +225,7 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
             obj = container.get_object(name)
             size = obj.size
             return os.stat_result((666, 0L, 0L, 0, 0, 0, size, 0, 0, 0))
-        except KeyError:
+        except(cloudfiles.errors.NoSuchContainer, cloudfiles.errors.NoSuchObject):
             raise OSError(2, 'No such file or directory')
 
     def getmtime(self, path):
@@ -211,7 +233,16 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
 
     def getsize(self, path):
         return self.stat(path).st_size
-    
+
+    def remove(self, path):
+        username, container, name = self.parse_fspath(path)
+        try:
+            container = operations.connection.get_container(container)
+            obj = container.get_object(name)
+            container.delete_object(obj)
+        except(cloudfiles.errors.NoSuchContainer, cloudfiles.errors.NoSuchObject):
+            raise OSError(2, 'No such file or directory')
+        return not name
     exists = lexists
     lstat = stat
 
