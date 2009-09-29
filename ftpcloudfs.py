@@ -223,8 +223,23 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         return path
 
     def lexists(self, path):
-        #TODO:
-        pass
+        try:
+            username, container, obj = self.parse_fspath(path)
+        except(ValueError):
+            raise OSError(2, 'No such file or directory')
+
+        if not container and not obj:
+            attributes = {}
+            containers = operations.connection.list_containers()
+            return container in containers
+
+        if container and not obj:
+            try:
+                cnt = operations.connection.get_container(container)
+                objects = cnt.list_objects()
+            except(cloudfiles.errors.NoSuchContainer):
+                raise OSError(2, 'No such file or directory')
+            return obj in objects
 
     def stat(self, path):
         username, container, name = self.parse_fspath(path)
