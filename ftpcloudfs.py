@@ -1,7 +1,10 @@
 import os
+import sys
 import datetime
 import time
 import mimetypes
+from optparse import OptionParser
+from socket import gethostbyname, gaierror
 
 from pyftpdlib import ftpserver
 import cloudfiles
@@ -99,7 +102,7 @@ class RackspaceCloudFilesFD(object):
             return self.obj.read(size=readsize, offset=offset)
 
     def seek(self, pos, whence=0):
-        #TODO:
+        #TODO: properly
         raise IOError(1, 'Operation not permitted')        
         
     # def seek(self, pos, whence=0):
@@ -300,15 +303,33 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         raise OSError(40, 'unsupported')
 
 def main():
-    bind = 2021
-    
+    parser = OptionParser(usage="ftpcloudfs.py [OPTIONS].....")
+    parser.add_option('-p', '--port',
+                      type="int",
+                      dest="port",
+                      default=2021,
+                      help="Port to bind the server default: 2021."
+                      )
+    parser.add_option('-a', '--add_option',
+                      type="str",
+                      dest="bind_address",
+                      default="127.0.0.1",
+                      help="Address to bind default: 127.0.0.1."
+                      )
+    (options, args) = parser.parse_args()
+
     ftp_handler = ftpserver.FTPHandler
     ftp_handler.banner = 'Rackspace Cloud Files %s using %s' % \
         (__version__, ftp_handler.banner)
     ftp_handler.authorizer = RackspaceCloudAuthorizer()
     ftp_handler.abstracted_fs = RackspaceCloudFilesFS
 
-    ftpd = ftpserver.FTPServer(('', bind), ftp_handler)
+    try:
+        ftp_handler.masquerade_address = gethostbyname(options.bind_address)
+    except gaierror, (errno, errmsg):
+        sys.exit('Address error: %s' % errmsg)
+    
+    ftpd = ftpserver.FTPServer((options.bind_address, options.port), ftp_handler)
     ftpd.serve_forever()
     
 
