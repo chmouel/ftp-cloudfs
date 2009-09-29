@@ -171,11 +171,26 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
                 raise OSError(2, 'No such file or directory')
 
     def rmdir(self, path):
-        #TODO:
-        pass
+        username, container, name = self.parse_fspath(path)
+        if name:
+            raise OSError(13, 'Operation not permitted')
 
+        try:
+            container = operations.connection.get_container(container)
+        except(cloudfiles.errors.NoSuchContainer):
+            raise OSError(2, 'No such file or directory')
+
+        try:
+            operations.connection.delete_container(container)
+        except(cloudfiles.errors.ContainerNotEmpty):
+            raise OSError(39, "Directory not empty: '%s'" % container)
+        
     def remove(self, path):
         username, container, name = self.parse_fspath(path)
+
+        if not name:
+            raise OSError(13, 'Operation not permitted')
+        
         try:
             container = operations.connection.get_container(container)
             obj = container.get_object(name)
