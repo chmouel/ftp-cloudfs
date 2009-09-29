@@ -15,7 +15,6 @@ class CloudOperations(object):
     def authenticate(self, username, api_key):
         self.username = username
         self.connection = cloudfiles.get_connection(username, api_key)    
-
 operations = CloudOperations()
         
 class RackspaceCloudAuthorizer(ftpserver.DummyAuthorizer):
@@ -51,6 +50,50 @@ class RackspaceCloudAuthorizer(ftpserver.DummyAuthorizer):
     def get_msg_quit(self, username):
         return 'Goodbye %s' % username
 
+class RackspaceCloudFilesFD(object):
+    def __init__(self, username, container, obj, mode):
+        self.username = username
+        self.container = container
+        self.name = obj
+        self.mode = mode
+        self.closed = False
+        self.total_size = 0
+        
+        if not username or not container or not obj:
+            self.closed = True
+            raise IOError(1, 'Operation not permitted')
+
+        self.container = operations.connection.get_container(self.container)
+        self.obj = self.container.get_object(self.name)
+
+    def close(self):
+        if self.closed:
+            return
+        self.closed = True
+        return True
+    
+    def read(self, size=65536):
+        readsize=size
+        if (self.total_size + size) > self.obj.size:
+            readsize=self.obj.size - self.total_size
+        #print "Total_Size: %s Obj_SIZE: %s: Bigger: %s READSIZE: %s" % \
+            #(self.total_size, self.obj.size, self.total_size > self.obj.size, readsize)
+        if self.total_size >= self.obj.size:
+            return
+        else:
+            offset=self.total_size
+            self.total_size += size
+            return self.obj.read(size=readsize, offset=offset)
+
+    def seek(self, pos, whence=0):
+        #TODO:
+        raise IOError(1, 'Operation not permitted')        
+        
+    # def seek(self, pos, whence=0):
+    #     print "Seeking to %s" % (pos)
+    #     self.total_size=pos
+    #     return self.read()
+    
 class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
     '''Rackspace Cloud Files File system emulation for FTP server.
     '''
@@ -67,6 +110,11 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
             parts.append('')
         return tuple(parts)
 
+    def open(self, filename, mode):
+        #print '#### open', filename, mode
+        username, container, obj = self.parse_fspath(filename)
+        return RackspaceCloudFilesFD(username, container, obj, mode)
+    
     def chdir(self, path):
         if path.startswith(self.root):
             username, container, obj = self.parse_fspath(path)
@@ -124,7 +172,36 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
     def format_mlsx(self, basedir, listing, perms, facts, ignore_err=True):
         raise OSError(40, 'unsupported')
 
-            
+    def isdir(self, path):
+        username, site, filename = self.parse_fspath(path)
+        return not filename
+    
+    def lexists(self, path):
+        print "FOOOOOOOOOOO: lexists"
+
+    def stat(self, path):
+        username, container, name = self.parse_fspath(path)
+
+        if not name:
+            raise OSError(40, 'unsupported')            
+        try:
+            container = operations.connection.get_container(container)
+            obj = container.get_object(name)
+            size = obj.size
+            return os.stat_result((666, 0L, 0L, 0, 0, 0, size, 0, 0, 0))
+        except KeyError:
+            raise OSError(2, 'No such file or directory')
+
+    def getmtime(self, path):
+        return self.stat(path).st_mtime
+
+    def getsize(self, path):
+        return self.stat(path).st_size
+    
+    exists = lexists
+    lstat = stat
+
+        
 def main():
     bind = 2021
     
