@@ -82,7 +82,7 @@ class RackspaceCloudFilesFD(object):
         else: #write
             self.obj = self.container.create_object(obj)
             self.obj.content_type = mimetypes.guess_type(obj)[0]
-
+            
     def write(self, data):
         if 'r' in self.mode:
             raise OSError(1, 'Operation not permitted')
