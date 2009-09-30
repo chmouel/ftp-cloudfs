@@ -5,7 +5,7 @@ from socket import gethostbyname, gaierror
 
 from pyftpdlib import ftpserver
 
-from ftpcloudfs.ftp import RackspaceCloudAuthorizer, RackspaceCloudFilesFS
+from ftpcloudfs.server import RackspaceCloudAuthorizer, RackspaceCloudFilesFS
 from ftpcloudfs.constants import version, default_address, default_port
 
 def main():
