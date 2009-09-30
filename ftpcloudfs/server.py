@@ -249,6 +249,7 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
             container = operations.connection.get_container(container)
             obj = container.get_object(name)
             size = obj.size
+            #TODO: stats datetime
             return os.stat_result((666, 0L, 0L, 0, 0, 0, size, 0, 0, 0))
         except(cloudfiles.errors.NoSuchContainer,
                cloudfiles.errors.NoSuchObject):
