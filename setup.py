@@ -10,5 +10,5 @@ setup(name='ftp-cloudfs',
       author_email='chmouel.boudjnah@rackspace.co.uk',
       url='http://blog.chmouel.com',
       packages=['ftpcloudfs'],
-      scripts=['scripts/ftpcloudfs']
+      scripts=['bin/ftpcloudfs']
      )

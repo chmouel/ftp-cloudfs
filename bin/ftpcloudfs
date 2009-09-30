@@ -24,7 +24,7 @@ def setup_log(log_file=None):
                         level=logging.DEBUG)
     
 def main():
-    parser = OptionParser(usage="ftpcloudfs.py [OPTIONS].....")
+    parser = OptionParser(usage="ftpcloudfs [OPTIONS].....")
     parser.add_option('-p', '--port',
                       type="int",
                       dest="port",
