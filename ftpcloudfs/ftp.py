@@ -6,16 +6,12 @@
 # help you if you send me an email or leave a comment (preferred
 # method) on my blog: http://blog.chmouel.com
 import os
-import sys
 import datetime
 import time
 import mimetypes
-from optparse import OptionParser
-from socket import gethostbyname, gaierror
 
 from pyftpdlib import ftpserver
 import cloudfiles
-__version__ = '0.1'
 
 class CloudOperations(object):
     def __init__(self):
@@ -111,11 +107,6 @@ class RackspaceCloudFilesFD(object):
         #TODO: properly
         raise IOError(1, 'Operation not permitted')        
         
-    # def seek(self, pos, whence=0):
-    #     print "Seeking to %s" % (pos)
-    #     self.total_size=pos
-    #     return self.read()
-    
 class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
     '''Rackspace Cloud Files File system emulation for FTP server.
     '''
@@ -308,39 +299,3 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         
     def format_mlsx(self, basedir, listing, perms, facts, ignore_err=True):
         raise OSError(40, 'unsupported')
-
-def main():
-    parser = OptionParser(usage="ftpcloudfs.py [OPTIONS].....")
-    parser.add_option('-p', '--port',
-                      type="int",
-                      dest="port",
-                      default=2021,
-                      help="Port to bind the server default: 2021."
-                      )
-    parser.add_option('-a', '--add_option',
-                      type="str",
-                      dest="bind_address",
-                      default="127.0.0.1",
-                      help="Address to bind default: 127.0.0.1."
-                      )
-    (options, args) = parser.parse_args()
-
-    ftp_handler = ftpserver.FTPHandler
-    ftp_handler.banner = 'Rackspace Cloud Files %s using %s' % \
-        (__version__, ftp_handler.banner)
-    ftp_handler.authorizer = RackspaceCloudAuthorizer()
-    ftp_handler.abstracted_fs = RackspaceCloudFilesFS
-
-    try:
-        ftp_handler.masquerade_address = gethostbyname(options.bind_address)
-    except gaierror, (errno, errmsg):
-        sys.exit('Address error: %s' % errmsg)
-    
-    ftpd = ftpserver.FTPServer((options.bind_address,
-                                options.port),
-                               ftp_handler)
-    ftpd.serve_forever()
-    
-
-if __name__ == '__main__':
-    main()
