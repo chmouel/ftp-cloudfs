@@ -24,7 +24,8 @@ class CloudOperations(object):
         
     def authenticate(self, username, api_key):
         self.username = username
-        self.connection = cloudfiles.get_connection(username, api_key)    
+        self.connection = cloudfiles.get_connection(username, api_key)
+        
 operations = CloudOperations()
         
 class RackspaceCloudAuthorizer(ftpserver.DummyAuthorizer):
@@ -96,19 +97,17 @@ class RackspaceCloudFilesFD(object):
         return 
     
     def read(self, size=65536):
-        readsize=size
+        readsize = size
         if (self.total_size + size) > self.obj.size:
-            readsize=self.obj.size - self.total_size
-        #print "Total_Size: %s Obj_SIZE: %s: Bigger: %s READSIZE: %s" % \
-            #(self.total_size, self.obj.size, self.total_size > self.obj.size, readsize)
+            readsize = self.obj.size - self.total_size
         if self.total_size >= self.obj.size:
             return
         else:
-            offset=self.total_size
+            offset = self.total_size
             self.total_size += size
             return self.obj.read(size=readsize, offset=offset)
 
-    def seek(self, pos, whence=0):
+    def seek(self, pos, whence = 0):
         #TODO: properly
         raise IOError(1, 'Operation not permitted')        
         
@@ -143,7 +142,7 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
             username, container, obj = self.parse_fspath(path)
             if container:
                 try:
-                    cnt = operations.connection.get_container(container)
+                    operations.connection.get_container(container)
                     self.cwd = self.fs2ftp(path)
                     return
                 except(cloudfiles.errors.NoSuchContainer):
@@ -182,6 +181,7 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
 
     def rmdir(self, path):
         username, container, name = self.parse_fspath(path)
+
         if name:
             raise OSError(13, 'Operation not permitted')
 
@@ -205,7 +205,8 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
             container = operations.connection.get_container(container)
             obj = container.get_object(name)
             container.delete_object(obj)
-        except(cloudfiles.errors.NoSuchContainer, cloudfiles.errors.NoSuchObject):
+        except(cloudfiles.errors.NoSuchContainer,
+               cloudfiles.errors.NoSuchObject):
             raise OSError(2, 'No such file or directory')
         return not name
 
@@ -238,7 +239,6 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
             raise OSError(2, 'No such file or directory')
 
         if not container and not obj:
-            attributes = {}
             containers = operations.connection.list_containers()
             return container in containers
 
@@ -259,7 +259,8 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
             obj = container.get_object(name)
             size = obj.size
             return os.stat_result((666, 0L, 0L, 0, 0, 0, size, 0, 0, 0))
-        except(cloudfiles.errors.NoSuchContainer, cloudfiles.errors.NoSuchObject):
+        except(cloudfiles.errors.NoSuchContainer,
+               cloudfiles.errors.NoSuchObject):
             raise OSError(2, 'No such file or directory')
 
     exists = lexists
@@ -275,7 +276,6 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
             raise OSError(2, 'No such file or directory')
 
         if not container and not obj:
-            attributes = {}
             containers = operations.connection.list_containers_info()
             return self.format_list_containers(containers)
 
@@ -336,7 +336,9 @@ def main():
     except gaierror, (errno, errmsg):
         sys.exit('Address error: %s' % errmsg)
     
-    ftpd = ftpserver.FTPServer((options.bind_address, options.port), ftp_handler)
+    ftpd = ftpserver.FTPServer((options.bind_address,
+                                options.port),
+                               ftp_handler)
     ftpd.serve_forever()
     
 
