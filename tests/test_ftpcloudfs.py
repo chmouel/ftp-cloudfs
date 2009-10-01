@@ -5,8 +5,7 @@ import sys
 import ftplib
 import StringIO
 
-SERVER_IP="127.0.0.1"
-SERVER_PORT=2021
+from ftpcloudfs.constants import default_address, default_port
 
 class FtpCloudFSTest(unittest.TestCase):
     def setUp(self):
@@ -17,8 +16,8 @@ class FtpCloudFSTest(unittest.TestCase):
         self.username = os.environ['RCLOUD_API_USER']
         self.api_key = os.environ['RCLOUD_API_KEY']
         self.cnx = ftplib.FTP()
-        self.cnx.host = SERVER_IP
-        self.cnx.port = SERVER_PORT
+        self.cnx.host = default_address
+        self.cnx.port = default_port
         self.cnx.connect()
         self.cnx.login(self.username, self.api_key)
         self.cnx.mkd("/ftpcloudfs_testing")
