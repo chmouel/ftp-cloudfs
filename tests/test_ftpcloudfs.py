@@ -39,6 +39,21 @@ class FtpCloudFSTest(unittest.TestCase):
         self.assertEqual(self.cnx.delete("testfile.txt"), "250 File removed.")
         store.close()
 
+    def test_chdir_to_a_file(self):
+        self.cnx.storbinary("STOR testfile.txt", StringIO.StringIO("Hello Moto"))
+        #self.assertRaises does not seems to work no idea why but that works
+        try:
+            self.cnx.cwd("/ftpcloudfs_testing/testfile.txt")
+        except(ftplib.error_perm):
+            pass
+        else:
+            self.assert_(False)
+        
+        self.cnx.delete("testfile.txt")    
+
+    def test_chdir_to_slash(self):
+        self.cnx.cwd("/")
+        
     def test_listdir(self):
         content_string="Hello Moto"
         self.cnx.storbinary("STOR testfile.txt", StringIO.StringIO(content_string))

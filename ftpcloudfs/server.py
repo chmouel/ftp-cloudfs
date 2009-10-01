@@ -131,18 +131,20 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
     def chdir(self, path):
         if path.startswith(self.root):
             username, container, obj = self.parse_fspath(path)
-            if container:
+
+            if not container:
+                self.cwd =  self.fs2ftp(path)
+                return
+                
+            if not obj:
                 try:
                     operations.connection.get_container(container)
                     self.cwd = self.fs2ftp(path)
                     return
-                except(cloudfiles.errors.NoSuchContainer):
+                except(cloudfiles.errors.NoSuchContainer,cloudfiles.errors.InvalidContainerName):
                     raise OSError(2, 'No such file or directory')
-            else:
-                self.cwd = self.fs2ftp(path)
-                return
                 
-        raise OSError(2, 'No such file or directory.')
+        raise OSError(550, 'Failed to change directory.')
 
     def mkdir(self, path):
         try:
