@@ -9,7 +9,7 @@ from pyftpdlib import ftpserver
 
 from ftpcloudfs.server import RackspaceCloudAuthorizer, RackspaceCloudFilesFS
 from ftpcloudfs.constants import version, default_address, default_port
-
+from ftpcloudfs.monkeypatching import MyFTPHandler
 
 def setup_log(log_file=None):
     def log(log_type, msg):
@@ -50,7 +50,7 @@ def main():
 
     setup_log(options.log_file)
     
-    ftp_handler = ftpserver.FTPHandler
+    ftp_handler = MyFTPHandler
     ftp_handler.banner = 'Rackspace Cloud Files %s using %s' % \
         (version, ftp_handler.banner)
     ftp_handler.authorizer = RackspaceCloudAuthorizer()
