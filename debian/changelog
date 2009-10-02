@@ -1,3 +1,9 @@
+ftp-cloudfs (0.2-1) unstable; urgency=low
+
+  * Increased version.
+
+ -- Chmouel Boudjnah <chmouel.boudjnah@rackspace.co.uk>  Fri, 02 Oct 2009 01:41:08 -0500
+
 ftp-cloudfs (0.1-1) unstable; urgency=low
 
   * First packaged version.
