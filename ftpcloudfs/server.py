@@ -13,6 +13,8 @@ import mimetypes
 from pyftpdlib import ftpserver
 import cloudfiles
 
+from cStringIO import StringIO
+
 class CloudOperations(object):
     def __init__(self):
         self.connection = None
@@ -64,6 +66,7 @@ class RackspaceCloudFilesFD(object):
         self.mode = mode
         self.closed = False
         self.total_size = 0
+        self.string_io = None
         
         if not username or not container or not obj:
             self.closed = True
@@ -82,18 +85,18 @@ class RackspaceCloudFilesFD(object):
         else: #write
             self.obj = self.container.create_object(obj)
             self.obj.content_type = mimetypes.guess_type(obj)[0]
-            self.data = []
+            self.string_io = StringIO()
             
     def write(self, data):
         if 'r' in self.mode:
             raise OSError(1, 'Operation not permitted')
-        self.data.append(data)
+        self.string_io.write(data)
         
     def close(self):
         self.closed = True
         if 'r' in self.mode:
             return
-        self.obj.write(''.join(self.data))
+        self.obj.write(self.string_io.getvalue())
     
     def read(self, size=65536):
         readsize = size
