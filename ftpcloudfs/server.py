@@ -82,15 +82,18 @@ class RackspaceCloudFilesFD(object):
         else: #write
             self.obj = self.container.create_object(obj)
             self.obj.content_type = mimetypes.guess_type(obj)[0]
+            self.data = []
             
     def write(self, data):
         if 'r' in self.mode:
             raise OSError(1, 'Operation not permitted')
-        self.obj.write(data)
+        self.data.append(data)
         
     def close(self):
         self.closed = True
-        return 
+        if 'r' in self.mode:
+            return
+        self.obj.write(''.join(self.data))
     
     def read(self, size=65536):
         readsize = size
