@@ -13,7 +13,7 @@ import mimetypes
 from pyftpdlib import ftpserver
 import cloudfiles
 
-from cStringIO import StringIO
+from monkeypatching import ChunkObject
 
 class CloudOperations(object):
     def __init__(self):
@@ -66,7 +66,6 @@ class RackspaceCloudFilesFD(object):
         self.mode = mode
         self.closed = False
         self.total_size = 0
-        self.string_io = None
         
         if not username or not container or not obj:
             self.closed = True
@@ -83,20 +82,19 @@ class RackspaceCloudFilesFD(object):
             except(cloudfiles.errors.NoSuchObject):
                 raise IOError(2, 'No such file or directory')                
         else: #write
-            self.obj = self.container.create_object(obj)
+            self.obj = ChunkObject(self.container, obj)
             self.obj.content_type = mimetypes.guess_type(obj)[0]
-            self.string_io = StringIO()
+            self.obj.prepare_chunk()
             
     def write(self, data):
         if 'r' in self.mode:
             raise OSError(1, 'Operation not permitted')
-        self.string_io.write(data)
+        self.obj.send_chunk(data)
         
     def close(self):
-        self.closed = True
         if 'r' in self.mode:
             return
-        self.obj.write(self.string_io.getvalue())
+        self.obj.finish_chunk()
     
     def read(self, size=65536):
         readsize = size
