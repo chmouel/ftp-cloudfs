@@ -23,9 +23,13 @@ class CloudOperations(object):
         self.connection = None
         self.username = None
 
-    def authenticate(self, username, api_key):
+    def authenticate(self, username, api_key, servicenet=False):
         self.username = username
-        self.connection = cloudfiles.get_connection(username, api_key)
+
+        #Thanks the way get_connection works we don't have to check if
+        #the python api version is accepting servicenet keyword
+        self.connection = cloudfiles.get_connection(username, api_key,
+                                                    servicenet=servicenet)
 operations = CloudOperations()
 
 
@@ -34,10 +38,12 @@ class RackspaceCloudAuthorizer(ftpserver.DummyAuthorizer):
     Files and keeps track of them.
     '''
     users = {}
+    servicenet = False
 
     def validate_authentication(self, username, password):
         try:
-            operations.authenticate(username, password)
+            operations.authenticate(username, password,
+                                    servicenet=self.servicenet)
             return True
         except(cloudfiles.errors.AuthenticationFailed):
             return False
@@ -113,7 +119,7 @@ class RackspaceCloudFilesFD(object):
             self.total_size += size
             return self.obj.read(size=readsize, offset=offset)
 
-    def seek(self, pos, whence = 0):
+    def seek(self, *kargs, **kwargs):
         #TODO: properly
         raise IOError(1, 'Operation not permitted')
 
@@ -309,8 +315,8 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
             yield 'drw-rw-rw-   1 %s   group  %8s Jan 01 00:00 %s\r\n' % \
                 (operations.username, name['bytes'], name['name'])
 
-    def get_stat_dir(self, rawline):
+    def get_stat_dir(self, *kargs, **kwargs):
         raise OSError(40, 'unsupported')
 
-    def format_mlsx(self, basedir, listing, perms, facts, ignore_err=True):
+    def format_mlsx(self, *kargs, **kwargs):
         raise OSError(40, 'unsupported')

@@ -43,12 +43,18 @@ def main():
                       default=default_address,
                       help="Address to bind default: %s." % (default_address))
 
+    parser.add_option('-s', '--service-net',
+                      action="store_true",
+                      dest="servicenet",
+                      default=False,
+                      help="Connect via Rackspace ServiceNet network.")
+    
     parser.add_option('-l', '--log-file',
                       type="str",
                       dest="log_file",
                       default=None,
                       help="Log File: Default stdout")
-    (options, args) = parser.parse_args()
+    (options, _) = parser.parse_args()
 
     setup_log(options.log_file)
 
@@ -58,11 +64,13 @@ def main():
     ftp_handler.banner = 'Rackspace Cloud Files %s using %s' % \
         (version, ftp_handler.banner)
     ftp_handler.authorizer = RackspaceCloudAuthorizer()
+    ftp_handler.authorizer.servicenet = options.servicenet
+    
     ftp_handler.abstracted_fs = RackspaceCloudFilesFS
-
+    
     try:
         ftp_handler.masquerade_address = gethostbyname(options.bind_address)
-    except gaierror, (errno, errmsg):
+    except gaierror, (_, errmsg):
         sys.exit('Address error: %s' % errmsg)
 
     ftpd = ftpserver.FTPServer((options.bind_address,
