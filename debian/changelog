@@ -1,3 +1,9 @@
+ftp-cloudfs (0.4-2) karmic; urgency=low
+
+  * Upload for karmic.
+
+ -- Chmouel Boudjnah <chmouel@chmouel.com>  Tue, 08 Dec 2009 19:11:30 +0000
+
 ftp-cloudfs (0.4-1) unstable; urgency=low
 
   * 0.4.
