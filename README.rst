@@ -51,15 +51,18 @@ which can be used like this :
 Usage: ftpcloudfs [OPTIONS].....
 
 Options::
+    Usage: ftpcloudfs [OPTIONS].....
 
-  -h, --help            show this help message and exit
-  -p PORT, --port=PORT  Port to bind the server default: 2021.
-  -b BIND_ADDRESS, --bind-address=BIND_ADDRESS
-                        Address to bind default: 127.0.0.1.
-  -s, --service-net     Connect via Rackspace ServiceNet network.
-  -l LOG_FILE, --log-file=LOG_FILE
-                        Log File: Default stdout
-
+    Options:
+      -h, --help            show this help message and exit
+      -p PORT, --port=PORT  Port to bind the server default: 2021.
+      -b BIND_ADDRESS, --bind-address=BIND_ADDRESS
+                            Address to bind default: 127.0.0.1.
+      -s, --service-net     Connect via Rackspace ServiceNet network.
+      -l LOG_FILE, --log-file=LOG_FILE
+                            Log File: Default stdout
+      -a AUTHURL, --auth-url=AUTHURL
+                            Auth URL for alternate providers (eg OpenStack)
 
 SUPPORT
 =======
