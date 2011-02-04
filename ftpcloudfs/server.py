@@ -23,13 +23,18 @@ class CloudOperations(object):
         self.connection = None
         self.username = None
 
-    def authenticate(self, username, api_key, servicenet=False):
+    def authenticate(self, username, api_key, servicenet=False, authurl=None):
         self.username = username
 
         #Thanks the way get_connection works we don't have to check if
         #the python api version is accepting servicenet keyword
-        self.connection = cloudfiles.get_connection(username, api_key,
-                                                    servicenet=servicenet)
+        kwargs = dict(servicenet=servicenet)
+        #Only add authurl if the user asked for it, to maintain
+        #compatibility with old python api versions
+        if authurl:
+            kwargs['authurl'] = authurl
+        self.connection = cloudfiles.get_connection(username, api_key, **kwargs)
+
 operations = CloudOperations()
 
 
@@ -39,11 +44,13 @@ class RackspaceCloudAuthorizer(ftpserver.DummyAuthorizer):
     '''
     users = {}
     servicenet = False
+    authurl = None
 
     def validate_authentication(self, username, password):
         try:
             operations.authenticate(username, password,
-                                    servicenet=self.servicenet)
+                                    servicenet=self.servicenet,
+                                    authurl=self.authurl)
             return True
         except(cloudfiles.errors.AuthenticationFailed):
             return False

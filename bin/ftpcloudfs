@@ -54,6 +54,13 @@ def main():
                       dest="log_file",
                       default=None,
                       help="Log File: Default stdout")
+
+    parser.add_option('-a', '--auth-url',
+                      type="str",
+                      dest="authurl",
+                      default=None,
+                      help="Auth URL for alternate providers (eg OpenStack)")
+
     (options, _) = parser.parse_args()
 
     setup_log(options.log_file)
@@ -65,6 +72,7 @@ def main():
         (version, ftp_handler.banner)
     ftp_handler.authorizer = RackspaceCloudAuthorizer()
     ftp_handler.authorizer.servicenet = options.servicenet
+    ftp_handler.authorizer.authurl = options.authurl
     
     ftp_handler.abstracted_fs = RackspaceCloudFilesFS
     
