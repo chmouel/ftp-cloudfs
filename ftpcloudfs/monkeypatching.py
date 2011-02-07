@@ -11,14 +11,9 @@ from cloudfiles.storage_object import Object
 from cloudfiles.errors  import ResponseError
 
 class MyDTPHandler(ftpserver.DTPHandler):
-    def __init__(self, *args):
-        ftpserver.DTPHandler.__init__(self, *args)
-
     def send(self, data):
         data=smart_str(data)
-        result = asyncore.dispatcher.send(self, data)
-        self.tot_bytes_sent += result
-        return result
+        return super(MyDTPHandler, self).send(data)
 
 class ChunkObject(Object):
     def prepare_chunk(self):
