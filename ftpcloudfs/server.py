@@ -9,6 +9,7 @@ import os
 import datetime
 import time
 import mimetypes
+import rfc822
 
 from pyftpdlib import ftpserver
 import cloudfiles
@@ -288,8 +289,12 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
             container = operations.connection.get_container(container)
             obj = container.get_object(name)
             size = obj.size
-            #TODO: stats datetime
-            return os.stat_result((666, 0L, 0L, 0, 0, 0, size, 0, 0, 0))
+            mtime = 0
+            mtime_tuple = rfc822.parsedate(obj.last_modified)
+            if mtime_tuple:
+                mtime = time.mktime(mtime_tuple)
+            #(mode, ino, dev, nlink, uid, gid, size, atime, mtime, ctime)
+            return os.stat_result((0666, 0L, 0L, 1, 0, 0, size, mtime, mtime, mtime))
         except(cloudfiles.errors.NoSuchContainer,
                cloudfiles.errors.NoSuchObject):
             raise OSError(2, 'No such file or directory')
