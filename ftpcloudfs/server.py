@@ -153,18 +153,29 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         username, container, obj = self.parse_fspath(filename)
         return RackspaceCloudFilesFD(username, container, obj, mode)
 
+    def _set_cwd(self, new_cwd):
+        '''Set the self.cwd
+
+        In pyftpd >= 0.6 it is a property backed by self._cwd, in <
+        0.6 it is just an attribute self.cwd
+        '''
+        try:
+            self.cwd = new_cwd
+        except AttributeError:
+            self._cwd = new_cwd
+
     def chdir(self, path):
         if path.startswith(self.root):
             _, container, obj = self.parse_fspath(path)
 
             if not container:
-                self.cwd = self.fs2ftp(path)
+                self._set_cwd(self.fs2ftp(path))
                 return
 
             if not obj:
                 try:
                     operations.connection.get_container(container)
-                    self.cwd = self.fs2ftp(path)
+                    self._set_cwd(self.fs2ftp(path))
                     return
                 except(cloudfiles.errors.NoSuchContainer,
                        cloudfiles.errors.InvalidContainerName):
