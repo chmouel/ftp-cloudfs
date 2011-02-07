@@ -201,7 +201,10 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
             raise OSError(2, 'No such file or directory')
 
         if not container and not obj:
-            return operations.connection.list_containers()
+            try:
+                return operations.connection.list_containers()
+            except(cloudfiles.errors.ResponseError):
+                raise OSError(1, 'Operation not permitted')
 
         if container and not obj:
             try:
