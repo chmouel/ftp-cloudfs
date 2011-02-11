@@ -10,6 +10,7 @@ import datetime
 import time
 import mimetypes
 import rfc822
+import stat
 
 from pyftpdlib import ftpserver
 import cloudfiles
@@ -131,10 +132,58 @@ class RackspaceCloudFilesFD(object):
         #TODO: properly
         raise IOError(1, 'Operation not permitted')
 
-
+class ListDirCache(object):
+    '''Cache for listdir'''
+    MAX_CACHE_TIME = 10         # seconds to cache the listdir for
+    def __init__(self):
+        self.container = None
+        self.cache = None
+        self.when = time.time()
+    def listdir(self, container):
+        '''Returns the list dir of the container and fills the cache'''
+        cnt = operations.connection.get_container(container)
+        objects = cnt.list_objects_info()
+        self.container = container
+        self.when = time.time()
+        # FIXME the encode("utf-8") is a bodge for a python-cloudfiles
+        # Which returns unicode strings in list_objects_info, but
+        # utf-8 is needed in get_container
+        self.cache = dict((o['name'].encode("utf-8"), o) for o in objects)
+        return sorted(self.cache.keys())
+    def stat(self, container, name):
+        '''Returns (size, mtime) for name in container or raises
+        cloudfiles.errors.NoSuchObject
+        Returns the information from the cache if possible
+        '''
+        age = time.time() - self.when
+        if self.container == container and age < self.MAX_CACHE_TIME:
+            # Read info from listdir cache
+            try:
+                obj = self.cache[name]
+            except KeyError:
+                raise cloudfiles.errors.NoSuchObject()
+            size = obj['bytes']
+            mtime_tuple = time.strptime(obj['last_modified'], '%Y-%m-%dT%H:%M:%S.%f')
+        else:
+            # Read info direct from container
+            container = operations.connection.get_container(container)
+            obj = container.get_object(name)
+            size = obj.size
+            mtime_tuple = rfc822.parsedate(obj.last_modified)
+        if mtime_tuple:
+            mtime = time.mktime(mtime_tuple)
+        else:
+            mtime = 0
+        return (size, mtime)
+    
 class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
     '''Rackspace Cloud Files File system emulation for FTP server.
     '''
+
+    def __init__(self, *args, **kwargs):
+        super(RackspaceCloudFilesFS, self).__init__(*args, **kwargs)
+        # A cache to hold the information from the last listdir
+        self.listdir_cache = ListDirCache()
 
     def parse_fspath(self, path):
         '''Returns a (username, site, filename) tuple. For shorter paths
@@ -200,16 +249,14 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         except(ValueError):
             raise OSError(2, 'No such file or directory')
 
-        if not container and not obj:
+        if not container:
             try:
                 return operations.connection.list_containers()
             except(cloudfiles.errors.ResponseError):
                 raise OSError(1, 'Operation not permitted')
-
-        if container and not obj:
+        else:
             try:
-                cnt = operations.connection.get_container(container)
-                return cnt.list_objects()
+                return self.listdir_cache.listdir(container)
             except(cloudfiles.errors.NoSuchContainer):
                 raise OSError(2, 'No such file or directory')
 
@@ -287,15 +334,10 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
     def stat(self, path):
         _, container, name = self.parse_fspath(path)
         if not name:
-            raise OSError(40, 'unsupported')
+            mtime = time.time()
+            return os.stat_result((0755|stat.S_IFDIR, 0L, 0L, 1, 0, 0, 4096, mtime, mtime, mtime))
         try:
-            container = operations.connection.get_container(container)
-            obj = container.get_object(name)
-            size = obj.size
-            mtime = 0
-            mtime_tuple = rfc822.parsedate(obj.last_modified)
-            if mtime_tuple:
-                mtime = time.mktime(mtime_tuple)
+            size, mtime = self.listdir_cache.stat(container, name)
             #(mode, ino, dev, nlink, uid, gid, size, atime, mtime, ctime)
             return os.stat_result((0666, 0L, 0L, 1, 0, 0, size, mtime, mtime, mtime))
         except(cloudfiles.errors.NoSuchContainer,
@@ -307,42 +349,3 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
 
     def validpath(self, path):
         return True
-
-    def get_list_dir(self, path):
-        try:
-            _, container, obj = self.parse_fspath(path)
-        except(ValueError):
-            raise OSError(2, 'No such file or directory')
-
-        if not container and not obj:
-            containers = operations.connection.list_containers_info()
-            return self.format_list_containers(containers)
-
-        if container and not obj:
-            try:
-                cnt = operations.connection.get_container(container)
-                objects = cnt.list_objects_info()
-            except(cloudfiles.errors.NoSuchContainer):
-                raise OSError(2, 'No such file or directory')
-            return self.format_list_objects(objects)
-
-    def format_list_objects(self, items):
-        for name in items:
-            ts = datetime.datetime(
-                *time.strptime(
-                    name['last_modified'][:name['last_modified'].find('.')],
-                    "%Y-%m-%dT%H:%M:%S")[0:6]).strftime("%b %d %H:%M")
-
-            yield '-rw-rw-rw-   1 %s   group  %8s %s %s\r\n' % \
-                (operations.username, name['bytes'], ts, name['name'])
-
-    def format_list_containers(self, items):
-        for name in items:
-            yield 'drw-rw-rw-   1 %s   group  %8s Jan 01 00:00 %s\r\n' % \
-                (operations.username, name['bytes'], name['name'])
-
-    def get_stat_dir(self, *kargs, **kwargs):
-        raise OSError(40, 'unsupported')
-
-    def format_mlsx(self, *kargs, **kwargs):
-        raise OSError(40, 'unsupported')
