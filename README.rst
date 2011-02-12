@@ -105,3 +105,8 @@ Author
 ======
 
 Chmouel Boudjnah <chmouel@chmouel.com>
+
+Contributor
+===========
+
+Nick Craig-Wood <nick@craig-wood.com>
