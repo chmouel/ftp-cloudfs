@@ -1,3 +1,16 @@
+2011-02-12  Chmouel Boudjnah  <chmouel.boudjnah@rackspace.co.uk>
+
+   * 0.5:
+	A lot of improvement and fixes from Nick Craig-Wood nick@craig-wood.com
+	highlights are :
+
+	- Make compatible with pyftpd >= 0.6
+	- Implement file modification times in RackspaceCloudFilesFS.stat
+	- Fix crash if user doesn't have permissions to list containers
+	- Remove custom directory list routines and replace with a listdir cache
+      to improve compatibility
+	- Allow to specify a custom auth url (ie: for OpenStack or UK CloudFiles).
+
 2009-11-02  Chmouel Boudjnah  <chmouel.boudjnah@rackspace.co.uk>
 
 	* server.py (RackspaceCloudAuthorizer.validate_authentication):
