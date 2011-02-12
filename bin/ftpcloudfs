@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+"""
+FTP Cloud Files - A FTP Proxy to Cloud FIles.
+"""
 import sys
 import os
 import logging
@@ -8,8 +11,9 @@ from socket import gethostbyname, gaierror
 
 from pyftpdlib import ftpserver
 
-# Make it easier for testing add the parent directory to this script
-# so we get pyftpdlib when not installed globally (and that look poetry to the untrained eye!)
+# Make it easier for testing add the parent directory of this script
+# so we get pyftpdlib when not installed globally (and that look poetry to the
+# untrained eye!)
 sys.path.append(
     os.path.abspath(
         os.path.join(
@@ -25,6 +29,9 @@ def setup_log(log_file=None):
     ''' Setup Logging '''
 
     def log(log_type, msg):
+        """
+        Dummy function.
+        """
         log_type(msg)
     ftpserver.log = lambda msg: log(logging.info, msg)
     ftpserver.logline = lambda msg: log(logging.debug, msg)
