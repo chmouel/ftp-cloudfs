@@ -1,3 +1,9 @@
+ftp-cloudfs (0.6.0) maverick; urgency=low
+
+  * Upload for maverick.
+
+ -- Chmouel Boudjnah <chmouel@chmouel.com>  Wed, 16 Feb 2011 16:17:21 +0000
+
 ftp-cloudfs (0.4-2) karmic; urgency=low
 
   * Upload for karmic.
