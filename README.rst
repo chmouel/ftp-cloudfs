@@ -22,7 +22,7 @@ REQUIREMENT
 
 - Python >= 2.5
 - python-cloudfiles >= 1.3.0  - http://github.com/rackspace/python-cloudfiles
-- pyftpdlib >= 0.5.2 - http://code.google.com/p/pyftpdlib/
+- pyftpdlib >= 0.6.0 - http://code.google.com/p/pyftpdlib/
 
 Operating Systems
 =================
