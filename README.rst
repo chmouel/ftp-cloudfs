@@ -49,11 +49,6 @@ prefix defined in your python distribution or command line arguments)
 which can be used like this :
 
 Usage: ftpcloudfs [OPTIONS].....
-
-Options::
-    Usage: ftpcloudfs [OPTIONS].....
-
-    Options:
       -h, --help            show this help message and exit
       -p PORT, --port=PORT  Port to bind the server default: 2021.
       -b BIND_ADDRESS, --bind-address=BIND_ADDRESS
