@@ -11,12 +11,17 @@ import time
 import mimetypes
 import rfc822
 import stat
+import sys
 
 from pyftpdlib import ftpserver
 import cloudfiles
 
 from monkeypatching import ChunkObject
 
+sysinfo = sys.version_info
+LAST_MODIFIED_FORMAT="%Y-%m-%dT%H:%M:%S.%f"
+if sysinfo[0] <= 2 and sysinfo[1] <= 5:
+    LAST_MODIFIED_FORMAT="%Y-%m-%dT%H:%M:%S"
 
 class CloudOperations(object):
     '''Storing connection object'''
@@ -163,7 +168,7 @@ class ListDirCache(object):
             except KeyError:
                 raise cloudfiles.errors.NoSuchObject()
             size = obj['bytes']
-            mtime_tuple = time.strptime(obj['last_modified'], '%Y-%m-%dT%H:%M:%S.%f')
+            mtime_tuple = time.strptime(obj['last_modified'], LAST_MODIFIED_FORMAT)
         else:
             # Read info direct from container
             container = operations.connection.get_container(container)
