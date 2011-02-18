@@ -3,7 +3,7 @@ FTP Interface to Rackspace Cloud Files
 ======================================
 
 :Homepage:  http://blog.chmouel.com/2009/10/29/ftp-server-for-cloud-files/
-:Credits:   Copyright 2009--2010 Chmouel Boudjnah <chmouel@chmouel.com>
+:Credits:   Copyright 2009--2011 Chmouel Boudjnah <chmouel@chmouel.com>
 :Licence:   BSD
 
 
