@@ -20,9 +20,10 @@ a non root/administrator user.
 REQUIREMENT
 ===========
 
-- Python >= 2.5
+- Python >= 2.6 (probably 2.5 as well but not extensively tested)
 - python-cloudfiles >= 1.3.0  - http://github.com/rackspace/python-cloudfiles
 - pyftpdlib >= 0.6.0 - http://code.google.com/p/pyftpdlib/
+- python-daemon >= 1.6 - http://pypi.python.org/pypi/python-daemon/
 
 Operating Systems
 =================
