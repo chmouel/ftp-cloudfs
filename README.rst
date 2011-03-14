@@ -19,6 +19,11 @@ a non root/administrator user.
 .. _OpenStack Swift: http://launchpad.net/swift
 .. _RackSpace Cloud Files: http://www.rackspace.com/cloud/cloud_hosting_products/files/
 
+It supports pseudo-hierachical folders/directories as described in the `Rackspace Cloud Files API`_ and the `OpenStack Object Storage API`_.
+
+.. _Rackspace Cloud Files API: http://docs.rackspacecloud.com/files/api/cf-devguide-latest.pdf
+.. _OpenStack Object Storage API: http://docs.openstack.org/openstack-object-storage/developer/content/
+
 REQUIREMENT
 ===========
 
