@@ -12,6 +12,7 @@ import mimetypes
 import rfc822
 import stat
 import sys
+import logging
 from errno import EPERM, ENOENT, EACCES, ENOTEMPTY, ENOTDIR
 
 from pyftpdlib import ftpserver
@@ -99,6 +100,7 @@ class RackspaceCloudAuthorizer(ftpserver.DummyAuthorizer):
 
 
 class RackspaceCloudFilesFD(object):
+    '''Acts like a file() object, but attached to a cloud files object'''
 
     def __init__(self, username, container, obj, mode):
         self.username = username
@@ -209,17 +211,21 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
     def parse_fspath(self, path):
         '''Returns a (username, site, filename) tuple. For shorter paths
         replaces not provided values with empty strings.
+        May raise IOSError for invalid paths
         '''
         if not path.startswith(os.sep):
+            logging.warning('parse_fspath: You have to provide a full path: %r' % path)
             raise IOSError(ENOENT, 'No such file or directory')
         parts = path.split(os.sep)[1:]
         if len(parts) > 3:
+            logging.warning('parse_fspath: Too many path items: %r' % path)
             raise IOSError(ENOENT, 'No such file or directory')
         while len(parts) < 3:
             parts.append('')
         return tuple(parts)
 
     def open(self, filename, mode):
+        '''Open filename with mode, raise IOError on error'''
         #print '#### open', filename, mode
         username, container, obj = self.parse_fspath(filename)
         return RackspaceCloudFilesFD(username, container, obj, mode)
@@ -255,6 +261,8 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         raise IOSError(ENOTDIR, 'Failed to change directory.')
 
     def mkdir(self, path):
+        '''Make a directory, raise OSError on error'''
+        logging.debug("mkdir %r" % path)
         _, container, obj = self.parse_fspath(path)
         if obj:
             raise IOSError(EPERM, 'Operation not permitted')
@@ -262,8 +270,9 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         operations.connection.create_container(container)
 
     def listdir(self, path):
+        '''List a directory, raise OSError on error'''
+        logging.debug("listdir %r" % path)
         _, container, obj = self.parse_fspath(path)
-
         if not container:
             try:
                 return operations.connection.list_containers()
@@ -276,6 +285,8 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
                 raise IOSError(ENOENT, 'No such file or directory')
 
     def rmdir(self, path):
+        '''Remove a directory, raise OSError on error'''
+        logging.debug("rmdir %r" % path)
         _, container, name = self.parse_fspath(path)
 
         if name:
@@ -292,6 +303,8 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
             raise IOSError(ENOTEMPTY, "Directory not empty: '%s'" % container)
 
     def remove(self, path):
+        '''Remove a file, raise OSError on error'''
+        logging.debug("remove %r" % path)
         _, container, name = self.parse_fspath(path)
 
         if not name:
@@ -307,43 +320,57 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         return not name
 
     def rename(self, src, dst):
+        '''Rename a file from src to dst, raise OSError on error'''
+        logging.debug("rename %r -> %r" % (src, dst))
         raise IOSError(EPERM, 'Operation not permitted')
 
     def isfile(self, path):
-        return not self.isdir(path)
+        '''Is this path a file.  Shouldn't raise an error if not found like os.path.isfile'''
+        logging.debug("isfile %r" % path)
+        try:
+            return stat.S_ISREG(self.stat(path).st_mode)
+        except EnvironmentError:
+            return False
 
     def islink(self, path):
+        '''Is this path a link.  Shouldn't raise an error if not found like os.path.islink'''
+        logging.debug("islink %r" % path)
         return False
 
     def isdir(self, path):
-        _, _, name = self.parse_fspath(path)
-        return not name
+        '''Is this path a directory.  Shouldn't raise an error if not found like os.path.isdir'''
+        logging.debug("isdir %r" % path)
+        try:
+            return stat.S_ISDIR(self.stat(path).st_mode)
+        except EnvironmentError:
+            return False
 
     def getsize(self, path):
+        '''Return the size of path, raise OSError on error'''
+        logging.debug("getsize %r" % path)
         return self.stat(path).st_size
 
     def getmtime(self, path):
+        '''Return the modification time of path, raise OSError on error'''
+        logging.debug("getmtime %r" % path)
         return self.stat(path).st_mtime
 
     def realpath(self, path):
+        '''Return the canonical path of the specified filename'''
         return path
 
     def lexists(self, path):
-        _, container, obj = self.parse_fspath(path)
-
-        if not container and not obj:
-            containers = operations.connection.list_containers()
-            return container in containers
-
-        if container and not obj:
-            try:
-                cnt = operations.connection.get_container(container)
-                objects = cnt.list_objects()
-            except(cloudfiles.errors.NoSuchContainer):
-                raise IOSError(ENOENT, 'No such file or directory')
-            return obj in objects
+        '''Test whether a path exists.  Returns True for broken symbolic links'''
+        logging.debug("lexists %r" % path)
+        try:
+            self.stat(path)
+            return True
+        except EnvironmentError:
+            return False
 
     def stat(self, path):
+        '''Return os.stat_result object for path, raise OSError on error'''
+        logging.debug("stat %r" % path)
         _, container, name = self.parse_fspath(path)
         if not name:
             mtime = time.time()
