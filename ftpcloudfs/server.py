@@ -210,10 +210,10 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         replaces not provided values with empty strings.
         '''
         if not path.startswith(os.sep):
-            raise ValueError('parse_fspath: You have to provide a full path')
+            raise IOSError(2, 'No such file or directory')
         parts = path.split(os.sep)[1:]
         if len(parts) > 3:
-            raise ValueError('parse_fspath: Path too deep')
+            raise IOSError(2, 'No such file or directory')
         while len(parts) < 3:
             parts.append('')
         return tuple(parts)
@@ -254,20 +254,14 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         raise IOSError(550, 'Failed to change directory.')
 
     def mkdir(self, path):
-        try:
-            _, container, obj = self.parse_fspath(path)
-            if obj:
-                raise IOSError(1, 'Operation not permitted')
-        except(ValueError):
-            raise IOSError(2, 'No such file or directory')
+        _, container, obj = self.parse_fspath(path)
+        if obj:
+            raise IOSError(1, 'Operation not permitted')
 
         operations.connection.create_container(container)
 
     def listdir(self, path):
-        try:
-            _, container, obj = self.parse_fspath(path)
-        except(ValueError):
-            raise IOSError(2, 'No such file or directory')
+        _, container, obj = self.parse_fspath(path)
 
         if not container:
             try:
@@ -334,10 +328,7 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         return path
 
     def lexists(self, path):
-        try:
-            _, container, obj = self.parse_fspath(path)
-        except(ValueError):
-            raise IOSError(2, 'No such file or directory')
+        _, container, obj = self.parse_fspath(path)
 
         if not container and not obj:
             containers = operations.connection.list_containers()
