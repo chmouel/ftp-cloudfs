@@ -12,6 +12,7 @@ import mimetypes
 import rfc822
 import stat
 import sys
+from errno import EPERM, ENOENT, EACCES, ENOTEMPTY, ENOTDIR
 
 from pyftpdlib import ftpserver
 import cloudfiles
@@ -109,19 +110,19 @@ class RackspaceCloudFilesFD(object):
 
         if not all([username, container, obj]):
             self.closed = True
-            raise IOSError(1, 'Operation not permitted')
+            raise IOSError(EPERM, 'Operation not permitted')
 
         try:
             self.container = \
                 operations.connection.get_container(self.container)
         except(cloudfiles.errors.NoSuchContainer):
-            raise IOSError(2, 'No such file or directory')
+            raise IOSError(ENOENT, 'No such file or directory')
 
         if 'r' in self.mode:
             try:
                 self.obj = self.container.get_object(self.name)
             except(cloudfiles.errors.NoSuchObject):
-                raise IOSError(2, 'No such file or directory')
+                raise IOSError(ENOENT, 'No such file or directory')
         else: #write
             self.obj = ChunkObject(self.container, obj)
             self.obj.content_type = mimetypes.guess_type(obj)[0]
@@ -129,7 +130,7 @@ class RackspaceCloudFilesFD(object):
 
     def write(self, data):
         if 'r' in self.mode:
-            raise IOSError(1, 'Operation not permitted')
+            raise IOSError(EPERM, 'Operation not permitted')
         self.obj.send_chunk(data)
 
     def close(self):
@@ -150,7 +151,7 @@ class RackspaceCloudFilesFD(object):
 
     def seek(self, *kargs, **kwargs):
         #TODO: properly
-        raise IOSError(1, 'Operation not permitted')
+        raise IOSError(EPERM, 'Operation not permitted')
 
 class ListDirCache(object):
     '''Cache for listdir'''
@@ -210,10 +211,10 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         replaces not provided values with empty strings.
         '''
         if not path.startswith(os.sep):
-            raise IOSError(2, 'No such file or directory')
+            raise IOSError(ENOENT, 'No such file or directory')
         parts = path.split(os.sep)[1:]
         if len(parts) > 3:
-            raise IOSError(2, 'No such file or directory')
+            raise IOSError(ENOENT, 'No such file or directory')
         while len(parts) < 3:
             parts.append('')
         return tuple(parts)
@@ -249,14 +250,14 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
                     return
                 except(cloudfiles.errors.NoSuchContainer,
                        cloudfiles.errors.InvalidContainerName):
-                    raise IOSError(2, 'No such file or directory')
+                    raise IOSError(ENOENT, 'No such file or directory')
 
-        raise IOSError(550, 'Failed to change directory.')
+        raise IOSError(ENOTDIR, 'Failed to change directory.')
 
     def mkdir(self, path):
         _, container, obj = self.parse_fspath(path)
         if obj:
-            raise IOSError(1, 'Operation not permitted')
+            raise IOSError(EPERM, 'Operation not permitted')
 
         operations.connection.create_container(container)
 
@@ -267,34 +268,34 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
             try:
                 return operations.connection.list_containers()
             except(cloudfiles.errors.ResponseError):
-                raise IOSError(1, 'Operation not permitted')
+                raise IOSError(EPERM, 'Operation not permitted')
         else:
             try:
                 return self.listdir_cache.listdir(container)
             except(cloudfiles.errors.NoSuchContainer):
-                raise IOSError(2, 'No such file or directory')
+                raise IOSError(ENOENT, 'No such file or directory')
 
     def rmdir(self, path):
         _, container, name = self.parse_fspath(path)
 
         if name:
-            raise IOSError(13, 'Operation not permitted')
+            raise IOSError(EACCES, 'Operation not permitted')
 
         try:
             container = operations.connection.get_container(container)
         except(cloudfiles.errors.NoSuchContainer):
-            raise IOSError(2, 'No such file or directory')
+            raise IOSError(ENOENT, 'No such file or directory')
 
         try:
             operations.connection.delete_container(container)
         except(cloudfiles.errors.ContainerNotEmpty):
-            raise IOSError(39, "Directory not empty: '%s'" % container)
+            raise IOSError(ENOTEMPTY, "Directory not empty: '%s'" % container)
 
     def remove(self, path):
         _, container, name = self.parse_fspath(path)
 
         if not name:
-            raise IOSError(13, 'Operation not permitted')
+            raise IOSError(EACCES, 'Operation not permitted')
 
         try:
             container = operations.connection.get_container(container)
@@ -302,11 +303,11 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
             container.delete_object(obj)
         except(cloudfiles.errors.NoSuchContainer,
                cloudfiles.errors.NoSuchObject):
-            raise IOSError(2, 'No such file or directory')
+            raise IOSError(ENOENT, 'No such file or directory')
         return not name
 
     def rename(self, src, dst):
-        raise IOSError(1, 'Operation not permitted')
+        raise IOSError(EPERM, 'Operation not permitted')
 
     def isfile(self, path):
         return not self.isdir(path)
@@ -339,7 +340,7 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
                 cnt = operations.connection.get_container(container)
                 objects = cnt.list_objects()
             except(cloudfiles.errors.NoSuchContainer):
-                raise IOSError(2, 'No such file or directory')
+                raise IOSError(ENOENT, 'No such file or directory')
             return obj in objects
 
     def stat(self, path):
@@ -353,7 +354,7 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
             return os.stat_result((0666, 0L, 0L, 1, 0, 0, size, mtime, mtime, mtime))
         except(cloudfiles.errors.NoSuchContainer,
                cloudfiles.errors.NoSuchObject):
-            raise IOSError(2, 'No such file or directory')
+            raise IOSError(ENOENT, 'No such file or directory')
 
     exists = lexists
     lstat = stat
