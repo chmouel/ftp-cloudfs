@@ -4,6 +4,7 @@ import os
 import sys
 import ftplib
 import StringIO
+from datetime import datetime
 
 from ftpcloudfs.constants import default_address, default_port
 
@@ -35,15 +36,52 @@ class FtpCloudFSTest(unittest.TestCase):
                          '250 "%s" is the current directory.' % (directory))
         self.assertEqual(self.cnx.rmd(directory), "250 Directory removed.")
 
+    def test_mkdir_chdir_mkdir_rmdir_subdir(self):
+        ''' mkdir/chdir/rmdir sub directory '''
+        directory = "/foobarrandom"
+        self.assertEqual(self.cnx.mkd(directory), directory)
+        self.assertEqual(self.cnx.cwd(directory),
+                         '250 "%s" is the current directory.' % (directory))
+        subdirectory = "potato"
+        subdirpath = directory + "/" + subdirectory
+        self.assertEqual(self.cnx.mkd(subdirectory), subdirpath)
+        # Can't delete a directory with stuff in
+        self.assertRaises(ftplib.error_perm, self.cnx.rmd, directory)
+        self.assertEqual(self.cnx.cwd(subdirectory),
+                         '250 "%s" is the current directory.' % (subdirpath))
+        self.assertEqual(self.cnx.cwd(".."),
+                         '250 "%s" is the current directory.' % (directory))
+        self.assertEqual(self.cnx.rmd(subdirectory), "250 Directory removed.")
+        self.assertEqual(self.cnx.cwd(".."),
+                         '250 "/" is the current directory.')
+        self.assertEqual(self.cnx.rmd(directory), "250 Directory removed.")
+
     def test_write_open_delete(self):
         ''' write/open/delete file '''
         content_string = "Hello Moto"
         self.cnx.storbinary("STOR testfile.txt",
                             StringIO.StringIO(content_string))
+        self.assertEquals(self.cnx.size("testfile.txt"), len(content_string))
         store = StringIO.StringIO()
         self.cnx.retrbinary("RETR testfile.txt", store.write)
         self.assertEqual(store.getvalue(), content_string)
         self.assertEqual(self.cnx.delete("testfile.txt"), "250 File removed.")
+        store.close()
+
+    def test_write_open_delete_subdir(self):
+        ''' write/open/delete file in a subdirectory'''
+        self.cnx.mkd("potato")
+        self.cnx.cwd("potato")
+        content_string = "Hello Moto"
+        self.cnx.storbinary("STOR testfile.txt",
+                            StringIO.StringIO(content_string))
+        self.assertEquals(self.cnx.size("testfile.txt"), len(content_string))
+        store = StringIO.StringIO()
+        self.cnx.retrbinary("RETR /ftpcloudfs_testing/potato/testfile.txt", store.write)
+        self.assertEqual(store.getvalue(), content_string)
+        self.assertEqual(self.cnx.delete("testfile.txt"), "250 File removed.")
+        self.cnx.cwd("..")
+        self.cnx.rmd("potato")
         store.close()
 
     def test_write_to_slash(self):
@@ -64,27 +102,78 @@ class FtpCloudFSTest(unittest.TestCase):
 
         self.cnx.storbinary("STOR testfile.txt",
                             StringIO.StringIO("Hello Moto"))
-        #self.assertRaises does not seems to work no idea why but that works
-        try:
-            self.cnx.cwd("/ftpcloudfs_testing/testfile.txt")
-        except(ftplib.error_perm):
-            pass
-        else:
-            self.assert_(False)
-
+        self.assertRaises(ftplib.error_perm, self.cnx.cwd, "/ftpcloudfs_testing/testfile.txt")
         self.cnx.delete("testfile.txt")
 
     def test_chdir_to_slash(self):
         ''' chdir to slash '''
         self.cnx.cwd("/")
 
+    def test_chdir_to_nonexistent_container(self):
+        ''' chdir to non existent container'''
+        self.assertRaises(ftplib.error_perm, self.cnx.cwd, "/i_dont_exist")
+
+    def test_chdir_to_nonexistent_directory(self):
+        ''' chdir to nonexistend directory'''
+        self.assertRaises(ftplib.error_perm, self.cnx.cwd, "i_dont_exist")
+        self.assertRaises(ftplib.error_perm, self.cnx.cwd, "/ftpcloudfs_testing/i_dont_exist")
+
+    def test_listdir_root(self):
+        ''' list root directory '''
+        self.cnx.cwd("/")
+        ls = self.cnx.nlst()
+        self.assertTrue('ftpcloudfs_testing' in ls)
+        self.assertTrue('potato' not in ls)
+        self.cnx.mkd("potato")
+        ls = self.cnx.nlst()
+        self.assertTrue('ftpcloudfs_testing' in ls)
+        self.assertTrue('potato' in ls)
+        self.cnx.rmd("potato")
+
     def test_listdir(self):
         ''' list directory '''
         content_string = "Hello Moto"
         self.cnx.storbinary("STOR testfile.txt",
                             StringIO.StringIO(content_string))
-        self.assertEqual(self.cnx.nlst()[0], "testfile.txt")
+        self.assertEqual(self.cnx.nlst(), ["testfile.txt"])
+        lines = []
+        self.assertEquals(self.cnx.retrlines('LIST', callback=lines.append), '226 Transfer complete.')
+        self.assertEquals(len(lines), 1)
+        line = lines[0]
+        self.assertTrue(line.startswith("-rw-r--r--   1 root     root           10 "+ datetime.now().strftime("%b %d %H:")))
+        self.assertTrue(line.endswith(" testfile.txt"))
         self.cnx.delete("testfile.txt")
+
+    def test_listdir_subdir(self):
+        ''' list a sub directory'''
+        content_string = "Hello Moto"
+        self.cnx.storbinary("STOR 1.txt",
+                            StringIO.StringIO(content_string))
+        self.cnx.storbinary("STOR 2.txt",
+                            StringIO.StringIO(content_string))
+        self.cnx.mkd("potato")
+        self.cnx.storbinary("STOR potato/3.txt",
+                            StringIO.StringIO(content_string))
+        self.cnx.storbinary("STOR potato/4.txt",
+                            StringIO.StringIO(content_string))
+        self.assertEqual(self.cnx.nlst(), ["1.txt", "2.txt", "potato"])
+        self.cnx.cwd("potato")
+        self.assertEqual(self.cnx.nlst(), ["3.txt", "4.txt"])
+        self.cnx.delete("3.txt")
+        self.cnx.delete("4.txt")
+        self.assertEqual(self.cnx.nlst(), [])
+        self.cnx.cwd("..")
+        self.cnx.delete("1.txt")
+        self.cnx.delete("2.txt")
+        self.assertEqual(self.cnx.nlst(), ["potato"])
+        lines = []
+        self.assertEquals(self.cnx.retrlines('LIST', callback=lines.append), '226 Transfer complete.')
+        self.assertEquals(len(lines), 1)
+        line = lines[0]
+        self.assertTrue(line.startswith("drwxr-xr-x   1 root     root            0 "+ datetime.now().strftime("%b %d %H:")))
+        self.assertTrue(line.endswith(" potato"))
+        self.cnx.rmd("potato")
+        self.assertEqual(self.cnx.nlst(), [])
 
     def tearDown(self):
         self.cnx.rmd("/ftpcloudfs_testing")
