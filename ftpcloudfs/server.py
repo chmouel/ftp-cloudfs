@@ -6,7 +6,6 @@
 # help you if you send me an email or leave a comment (preferred
 # method) on my blog: http://blog.chmouel.com
 import os
-import datetime
 import time
 import mimetypes
 import rfc822
@@ -19,6 +18,8 @@ from pyftpdlib import ftpserver
 import cloudfiles
 
 from monkeypatching import ChunkObject
+
+# FIXME change os.sep to '/' ? os.sep won't work on windows
 
 sysinfo = sys.version_info
 LAST_MODIFIED_FORMAT="%Y-%m-%dT%H:%M:%S.%f"
@@ -58,6 +59,14 @@ class CloudOperations(object):
         if authurl:
             kwargs['authurl'] = authurl
         self.connection = cloudfiles.get_connection(username, api_key, **kwargs)
+
+    def get_container(self, container):
+        '''Gets the named container returning a container object, raising
+        IOSError if not found'''
+        try:
+            return self.connection.get_container(container)
+        except cloudfiles.errors.NoSuchContainer:
+            raise IOSError(ENOENT, 'No such file or directory')
 
 operations = CloudOperations()
 
@@ -114,11 +123,7 @@ class RackspaceCloudFilesFD(object):
             self.closed = True
             raise IOSError(EPERM, 'Operation not permitted')
 
-        try:
-            self.container = \
-                operations.connection.get_container(self.container)
-        except(cloudfiles.errors.NoSuchContainer):
-            raise IOSError(ENOENT, 'No such file or directory')
+        self.container = operations.get_container(self.container)
 
         if 'r' in self.mode:
             try:
@@ -155,49 +160,91 @@ class RackspaceCloudFilesFD(object):
         #TODO: properly
         raise IOSError(EPERM, 'Operation not permitted')
 
+def path_split(path):
+    '''
+    Split a pathname.  Returns tuple "(head, tail)" where "tail" is
+    everything after the final slash.  If there is no slash, then it
+    returns ("", path)
+    '''
+    if "/" in path:
+        return path.rsplit("/", 1)
+    return ("", path)
+
+def basename(path):
+    '''Returns the final component of a pathname'''
+    return path_split(path)[1]
+
 class ListDirCache(object):
-    '''Cache for listdir'''
+    '''
+    Cache for listdir.  This is to cache the very common case when we
+    call listdir and then immediately call stat() on all the objects.
+    In the OS this would be cached in the VFS but we have to make our
+    own caching here to avoid the stat calls each making a connection.
+    '''
     MAX_CACHE_TIME = 10         # seconds to cache the listdir for
     def __init__(self):
         self.container = None
+        self.path = None
         self.cache = None
         self.when = time.time()
-    def listdir(self, container):
+    def flush(self):
+        '''Flush the listdir cache'''
+        self.cache = None
+    def listdir(self, container, path=""):
         '''Returns the list dir of the container and fills the cache'''
-        cnt = operations.connection.get_container(container)
-        objects = cnt.list_objects_info()
+        logging.debug("listdir container %r path %r" % (container, path))
+        cnt = operations.get_container(container)
+        objects = cnt.list_objects_info(path=path, delimiter="/")
         self.container = container
+        self.path = path
         self.when = time.time()
+        self.cache = dict((basename(o['name']), o) for o in objects)
+        leaves = sorted(self.cache.keys())
+        logging.debug(".. %r" % leaves)
         # FIXME the encode("utf-8") is a bodge for a python-cloudfiles
         # Which returns unicode strings in list_objects_info, but
         # utf-8 is needed in get_container
-        self.cache = dict((o['name'].encode("utf-8"), o) for o in objects)
-        return sorted(self.cache.keys())
-    def stat(self, container, name):
-        '''Returns (size, mtime) for name in container or raises
-        cloudfiles.errors.NoSuchObject
+        return [path.encode("utf-8") for path in leaves]
+    def valid(self, container, path):
+        '''Check the cache is valid for the container and directory path'''
+        if not self.cache:
+            return False
+        if self.container != container or self.path != path:
+            return False
+        age = time.time() - self.when
+        return age < self.MAX_CACHE_TIME
+    def stat(self, container, path):
+        '''Returns (size, mtime, is_directory) for path in container or raises
+        OSError
+
         Returns the information from the cache if possible
         '''
-        age = time.time() - self.when
-        if self.container == container and age < self.MAX_CACHE_TIME:
+        directory, leaf = path_split(path)
+        logging.debug("stat container %r, path %r, directory %r" % (container, path, directory))
+        if self.valid(container, directory):
             # Read info from listdir cache
             try:
-                obj = self.cache[name]
+                obj = self.cache[leaf]
             except KeyError:
-                raise cloudfiles.errors.NoSuchObject()
+                raise IOSError(ENOENT, 'No such file or directory')
             size = obj['bytes']
             mtime_tuple = time.strptime(obj['last_modified'], LAST_MODIFIED_FORMAT)
+            content_type = obj['content_type']
         else:
             # Read info direct from container
-            container = operations.connection.get_container(container)
-            obj = container.get_object(name)
+            cnt = operations.get_container(container)
+            try:
+                obj = cnt.get_object(path)
+            except cloudfiles.errors.NoSuchObject:
+                raise IOSError(ENOENT, 'No such file or directory')
             size = obj.size
             mtime_tuple = rfc822.parsedate(obj.last_modified)
+            content_type = obj.content_type
         if mtime_tuple:
             mtime = time.mktime(mtime_tuple)
         else:
             mtime = 0
-        return (size, mtime)
+        return (size, mtime, content_type == "application/directory")
     
 class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
     '''Rackspace Cloud Files File system emulation for FTP server.
@@ -216,18 +263,16 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         if not path.startswith(os.sep):
             logging.warning('parse_fspath: You have to provide a full path: %r' % path)
             raise IOSError(ENOENT, 'No such file or directory')
-        parts = path.split(os.sep)[1:]
-        if len(parts) > 3:
-            logging.warning('parse_fspath: Too many path items: %r' % path)
-            raise IOSError(ENOENT, 'No such file or directory')
+        parts = path.split(os.sep, 3)[1:]
         while len(parts) < 3:
             parts.append('')
         return tuple(parts)
 
-    def open(self, filename, mode):
-        '''Open filename with mode, raise IOError on error'''
-        #print '#### open', filename, mode
-        username, container, obj = self.parse_fspath(filename)
+    def open(self, path, mode):
+        '''Open path with mode, raise IOError on error'''
+        logging.debug("open %r mode %r" % (path, mode))
+        username, container, obj = self.parse_fspath(path)
+        self.listdir_cache.flush()
         return RackspaceCloudFilesFD(username, container, obj, mode)
 
     def _set_cwd(self, new_cwd):
@@ -242,32 +287,33 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
             self._cwd = new_cwd
 
     def chdir(self, path):
-        if path.startswith(self.root):
-            _, container, obj = self.parse_fspath(path)
-
-            if not container:
-                self._set_cwd(self.fs2ftp(path))
-                return
-
-            if not obj:
-                try:
-                    operations.connection.get_container(container)
-                    self._set_cwd(self.fs2ftp(path))
-                    return
-                except(cloudfiles.errors.NoSuchContainer,
-                       cloudfiles.errors.InvalidContainerName):
-                    raise IOSError(ENOENT, 'No such file or directory')
-
-        raise IOSError(ENOTDIR, 'Failed to change directory.')
+        '''Change current directory, raise OSError on error'''
+        logging.debug("chdir %r" % path)
+        if not path.startswith(self.root):
+            raise IOSError(ENOENT, 'Failed to change directory.')
+        _, container, obj = self.parse_fspath(path)
+        if not container:
+            logging.debug("cd to /")
+        else:
+            logging.debug("cd to container %r directory %r" % (container, obj))
+            if not self.isdir(path):
+                raise IOSError(ENOTDIR, "Can't cd to a directory")
+        self._set_cwd(self.fs2ftp(path))
 
     def mkdir(self, path):
         '''Make a directory, raise OSError on error'''
         logging.debug("mkdir %r" % path)
         _, container, obj = self.parse_fspath(path)
         if obj:
-            raise IOSError(EPERM, 'Operation not permitted')
-
-        operations.connection.create_container(container)
+            logging.debug("Making directory %r in %r" % (obj, container))
+            cnt = operations.get_container(container)
+            directory_obj = cnt.create_object(obj)
+            directory_obj.content_type = "application/directory"
+            directory_obj.write("")
+            self.listdir_cache.flush()
+        else:
+            logging.debug("Making container %r" % (container,))
+            operations.connection.create_container(container)
 
     def listdir(self, path):
         '''List a directory, raise OSError on error'''
@@ -280,27 +326,28 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
                 raise IOSError(EPERM, 'Operation not permitted')
         else:
             try:
-                return self.listdir_cache.listdir(container)
+                return self.listdir_cache.listdir(container, obj)
             except(cloudfiles.errors.NoSuchContainer):
                 raise IOSError(ENOENT, 'No such file or directory')
 
     def rmdir(self, path):
         '''Remove a directory, raise OSError on error'''
         logging.debug("rmdir %r" % path)
-        _, container, name = self.parse_fspath(path)
+        _, container, obj = self.parse_fspath(path)
 
-        if name:
-            raise IOSError(EACCES, 'Operation not permitted')
+        cnt = operations.get_container(container)
 
-        try:
-            container = operations.connection.get_container(container)
-        except(cloudfiles.errors.NoSuchContainer):
-            raise IOSError(ENOENT, 'No such file or directory')
-
-        try:
-            operations.connection.delete_container(container)
-        except(cloudfiles.errors.ContainerNotEmpty):
-            raise IOSError(ENOTEMPTY, "Directory not empty: '%s'" % container)
+        if obj:
+            logging.debug("Removing directory %r in %r" % (obj, container))
+            cnt.delete_object(obj)
+            # FIXME directory not empty?
+            self.listdir_cache.flush()
+        else:
+            logging.debug("Removing container %r" % (container,))
+            try:
+                operations.connection.delete_container(container)
+            except(cloudfiles.errors.ContainerNotEmpty):
+                raise IOSError(ENOTEMPTY, "Directory not empty: '%s'" % container)
 
     def remove(self, path):
         '''Remove a file, raise OSError on error'''
@@ -310,18 +357,21 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         if not name:
             raise IOSError(EACCES, 'Operation not permitted')
 
+        container = operations.get_container(container)
         try:
-            container = operations.connection.get_container(container)
             obj = container.get_object(name)
             container.delete_object(obj)
         except(cloudfiles.errors.NoSuchContainer,
                cloudfiles.errors.NoSuchObject):
             raise IOSError(ENOENT, 'No such file or directory')
+        self.listdir_cache.flush()
         return not name
 
     def rename(self, src, dst):
         '''Rename a file from src to dst, raise OSError on error'''
         logging.debug("rename %r -> %r" % (src, dst))
+        # FIXME implement this!
+        self.listdir_cache.flush()
         raise IOSError(EPERM, 'Operation not permitted')
 
     def isfile(self, path):
@@ -356,7 +406,7 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         return self.stat(path).st_mtime
 
     def realpath(self, path):
-        '''Return the canonical path of the specified filename'''
+        '''Return the canonical path of the specified path'''
         return path
 
     def lexists(self, path):
@@ -372,19 +422,24 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         '''Return os.stat_result object for path, raise OSError on error'''
         logging.debug("stat %r" % path)
         _, container, name = self.parse_fspath(path)
+        logging.debug("`..container %r path %r" % (container, name))
+        mode = 0755|stat.S_IFDIR
         if not name:
+            if container:
+                # If not root check container exists or not
+                operations.get_container(container)
             mtime = time.time()
-            return os.stat_result((0755|stat.S_IFDIR, 0L, 0L, 1, 0, 0, 4096, mtime, mtime, mtime))
-        try:
-            size, mtime = self.listdir_cache.stat(container, name)
-            #(mode, ino, dev, nlink, uid, gid, size, atime, mtime, ctime)
-            return os.stat_result((0666, 0L, 0L, 1, 0, 0, size, mtime, mtime, mtime))
-        except(cloudfiles.errors.NoSuchContainer,
-               cloudfiles.errors.NoSuchObject):
-            raise IOSError(ENOENT, 'No such file or directory')
+            return os.stat_result((mode, 0L, 0L, 1, 0, 0, 4096, mtime, mtime, mtime))
+        size, mtime, is_dir = self.listdir_cache.stat(container, name)
+        logging.debug("`...size = %r, mtime = %r, is_dir = %r" % (size, mtime, is_dir))
+        #(mode, ino, dev, nlink, uid, gid, size, atime, mtime, ctime)
+        if not is_dir:
+            mode = 0644|stat.S_IFREG
+        return os.stat_result((mode, 0L, 0L, 1, 0, 0, size, mtime, mtime, mtime))
 
     exists = lexists
     lstat = stat
 
     def validpath(self, path):
+        '''Check whether the path belongs to user's home directory'''
         return True
