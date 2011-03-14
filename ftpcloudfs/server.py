@@ -23,6 +23,21 @@ LAST_MODIFIED_FORMAT="%Y-%m-%dT%H:%M:%S.%f"
 if sysinfo[0] <= 2 and sysinfo[1] <= 5:
     LAST_MODIFIED_FORMAT="%Y-%m-%dT%H:%M:%S"
 
+class IOSError(OSError, IOError):
+    '''Subclass of OSError and IOError
+
+    This is needed because pyftpdlib catches either OSError, or
+    IOError depending on which operation it is performing, which is
+    perfectly correct, but makes our life more difficult.
+
+    However our operations don't map to simple functions, and have
+    common infrastructure.  These common infrastructure functions can
+    be called from either context and so don't know which error to
+    raise.
+
+    Using this combined type everywhere fixes the problem at very
+    small cost (multiple inheritance!)'''
+
 class CloudOperations(object):
     '''Storing connection object'''
 
@@ -94,19 +109,19 @@ class RackspaceCloudFilesFD(object):
 
         if not all([username, container, obj]):
             self.closed = True
-            raise IOError(1, 'Operation not permitted')
+            raise IOSError(1, 'Operation not permitted')
 
         try:
             self.container = \
                 operations.connection.get_container(self.container)
         except(cloudfiles.errors.NoSuchContainer):
-            raise IOError(2, 'No such file or directory')
+            raise IOSError(2, 'No such file or directory')
 
         if 'r' in self.mode:
             try:
                 self.obj = self.container.get_object(self.name)
             except(cloudfiles.errors.NoSuchObject):
-                raise IOError(2, 'No such file or directory')
+                raise IOSError(2, 'No such file or directory')
         else: #write
             self.obj = ChunkObject(self.container, obj)
             self.obj.content_type = mimetypes.guess_type(obj)[0]
@@ -114,7 +129,7 @@ class RackspaceCloudFilesFD(object):
 
     def write(self, data):
         if 'r' in self.mode:
-            raise OSError(1, 'Operation not permitted')
+            raise IOSError(1, 'Operation not permitted')
         self.obj.send_chunk(data)
 
     def close(self):
@@ -135,7 +150,7 @@ class RackspaceCloudFilesFD(object):
 
     def seek(self, *kargs, **kwargs):
         #TODO: properly
-        raise IOError(1, 'Operation not permitted')
+        raise IOSError(1, 'Operation not permitted')
 
 class ListDirCache(object):
     '''Cache for listdir'''
@@ -234,17 +249,17 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
                     return
                 except(cloudfiles.errors.NoSuchContainer,
                        cloudfiles.errors.InvalidContainerName):
-                    raise OSError(2, 'No such file or directory')
+                    raise IOSError(2, 'No such file or directory')
 
-        raise OSError(550, 'Failed to change directory.')
+        raise IOSError(550, 'Failed to change directory.')
 
     def mkdir(self, path):
         try:
             _, container, obj = self.parse_fspath(path)
             if obj:
-                raise OSError(1, 'Operation not permitted')
+                raise IOSError(1, 'Operation not permitted')
         except(ValueError):
-            raise OSError(2, 'No such file or directory')
+            raise IOSError(2, 'No such file or directory')
 
         operations.connection.create_container(container)
 
@@ -252,40 +267,40 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         try:
             _, container, obj = self.parse_fspath(path)
         except(ValueError):
-            raise OSError(2, 'No such file or directory')
+            raise IOSError(2, 'No such file or directory')
 
         if not container:
             try:
                 return operations.connection.list_containers()
             except(cloudfiles.errors.ResponseError):
-                raise OSError(1, 'Operation not permitted')
+                raise IOSError(1, 'Operation not permitted')
         else:
             try:
                 return self.listdir_cache.listdir(container)
             except(cloudfiles.errors.NoSuchContainer):
-                raise OSError(2, 'No such file or directory')
+                raise IOSError(2, 'No such file or directory')
 
     def rmdir(self, path):
         _, container, name = self.parse_fspath(path)
 
         if name:
-            raise OSError(13, 'Operation not permitted')
+            raise IOSError(13, 'Operation not permitted')
 
         try:
             container = operations.connection.get_container(container)
         except(cloudfiles.errors.NoSuchContainer):
-            raise OSError(2, 'No such file or directory')
+            raise IOSError(2, 'No such file or directory')
 
         try:
             operations.connection.delete_container(container)
         except(cloudfiles.errors.ContainerNotEmpty):
-            raise OSError(39, "Directory not empty: '%s'" % container)
+            raise IOSError(39, "Directory not empty: '%s'" % container)
 
     def remove(self, path):
         _, container, name = self.parse_fspath(path)
 
         if not name:
-            raise OSError(13, 'Operation not permitted')
+            raise IOSError(13, 'Operation not permitted')
 
         try:
             container = operations.connection.get_container(container)
@@ -293,11 +308,11 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
             container.delete_object(obj)
         except(cloudfiles.errors.NoSuchContainer,
                cloudfiles.errors.NoSuchObject):
-            raise OSError(2, 'No such file or directory')
+            raise IOSError(2, 'No such file or directory')
         return not name
 
     def rename(self, src, dst):
-        raise OSError(1, 'Operation not permitted')
+        raise IOSError(1, 'Operation not permitted')
 
     def isfile(self, path):
         return not self.isdir(path)
@@ -322,7 +337,7 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         try:
             _, container, obj = self.parse_fspath(path)
         except(ValueError):
-            raise OSError(2, 'No such file or directory')
+            raise IOSError(2, 'No such file or directory')
 
         if not container and not obj:
             containers = operations.connection.list_containers()
@@ -333,7 +348,7 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
                 cnt = operations.connection.get_container(container)
                 objects = cnt.list_objects()
             except(cloudfiles.errors.NoSuchContainer):
-                raise OSError(2, 'No such file or directory')
+                raise IOSError(2, 'No such file or directory')
             return obj in objects
 
     def stat(self, path):
@@ -347,7 +362,7 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
             return os.stat_result((0666, 0L, 0L, 1, 0, 0, size, mtime, mtime, mtime))
         except(cloudfiles.errors.NoSuchContainer,
                cloudfiles.errors.NoSuchObject):
-            raise OSError(2, 'No such file or directory')
+            raise IOSError(2, 'No such file or directory')
 
     exists = lexists
     lstat = stat
