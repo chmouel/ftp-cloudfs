@@ -28,6 +28,10 @@ class FtpCloudFSTest(unittest.TestCase):
         self.cnx.mkd("/ftpcloudfs_testing")
         self.cnx.cwd("/ftpcloudfs_testing")
 
+    def create_file(self, path, contents):
+        '''Create path with contents'''
+        self.cnx.storbinary("STOR %s" % path, StringIO.StringIO(contents))
+
     def test_mkdir_chdir_rmdir(self):
         ''' mkdir/chdir/rmdir directory '''
         directory = "/foobarrandom"
@@ -59,8 +63,7 @@ class FtpCloudFSTest(unittest.TestCase):
     def test_write_open_delete(self):
         ''' write/open/delete file '''
         content_string = "Hello Moto"
-        self.cnx.storbinary("STOR testfile.txt",
-                            StringIO.StringIO(content_string))
+        self.create_file("testfile.txt", content_string)
         self.assertEquals(self.cnx.size("testfile.txt"), len(content_string))
         store = StringIO.StringIO()
         self.cnx.retrbinary("RETR testfile.txt", store.write)
@@ -73,8 +76,7 @@ class FtpCloudFSTest(unittest.TestCase):
         self.cnx.mkd("potato")
         self.cnx.cwd("potato")
         content_string = "Hello Moto"
-        self.cnx.storbinary("STOR testfile.txt",
-                            StringIO.StringIO(content_string))
+        self.create_file("testfile.txt", content_string)
         self.assertEquals(self.cnx.size("testfile.txt"), len(content_string))
         store = StringIO.StringIO()
         self.cnx.retrbinary("RETR /ftpcloudfs_testing/potato/testfile.txt", store.write)
@@ -87,21 +89,12 @@ class FtpCloudFSTest(unittest.TestCase):
     def test_write_to_slash(self):
         ''' write to slash should not be permitted '''
         self.cnx.cwd("/")
-
         content_string = "Hello Moto"
-        try:
-            self.cnx.storbinary("STOR testfile.txt",
-                                StringIO.StringIO(content_string))
-        except(ftplib.error_perm):
-            pass
-        else:
-            self.assert_(False)
+        self.assertRaises(ftplib.error_perm, self.create_file, "testfile.txt", content_string)
 
     def test_chdir_to_a_file(self):
         ''' chdir to a file '''
-
-        self.cnx.storbinary("STOR testfile.txt",
-                            StringIO.StringIO("Hello Moto"))
+        self.create_file("testfile.txt", "Hello Moto")
         self.assertRaises(ftplib.error_perm, self.cnx.cwd, "/ftpcloudfs_testing/testfile.txt")
         self.cnx.delete("testfile.txt")
 
@@ -133,8 +126,7 @@ class FtpCloudFSTest(unittest.TestCase):
     def test_listdir(self):
         ''' list directory '''
         content_string = "Hello Moto"
-        self.cnx.storbinary("STOR testfile.txt",
-                            StringIO.StringIO(content_string))
+        self.create_file("testfile.txt", content_string)
         self.assertEqual(self.cnx.nlst(), ["testfile.txt"])
         lines = []
         self.assertEquals(self.cnx.retrlines('LIST', callback=lines.append), '226 Transfer complete.')
@@ -147,15 +139,11 @@ class FtpCloudFSTest(unittest.TestCase):
     def test_listdir_subdir(self):
         ''' list a sub directory'''
         content_string = "Hello Moto"
-        self.cnx.storbinary("STOR 1.txt",
-                            StringIO.StringIO(content_string))
-        self.cnx.storbinary("STOR 2.txt",
-                            StringIO.StringIO(content_string))
+        self.create_file("1.txt", content_string)
+        self.create_file("2.txt", content_string)
         self.cnx.mkd("potato")
-        self.cnx.storbinary("STOR potato/3.txt",
-                            StringIO.StringIO(content_string))
-        self.cnx.storbinary("STOR potato/4.txt",
-                            StringIO.StringIO(content_string))
+        self.create_file("potato/3.txt", content_string)
+        self.create_file("potato/4.txt", content_string)
         self.assertEqual(self.cnx.nlst(), ["1.txt", "2.txt", "potato"])
         self.cnx.cwd("potato")
         self.assertEqual(self.cnx.nlst(), ["3.txt", "4.txt"])
