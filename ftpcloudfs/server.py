@@ -20,6 +20,7 @@ import cloudfiles
 from monkeypatching import ChunkObject
 
 # FIXME change os.sep to '/' ? os.sep won't work on windows
+# FIXME need to cope with the 0 byte directory being missing otherwise get invisible files on errors
 
 sysinfo = sys.version_info
 LAST_MODIFIED_FORMAT="%Y-%m-%dT%H:%M:%S.%f"
@@ -335,12 +336,17 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         logging.debug("rmdir %r" % path)
         _, container, obj = self.parse_fspath(path)
 
+        if self.listdir(path):
+            raise IOSError(ENOTEMPTY, "Directory not empty: '%s'" % path)
+
         cnt = operations.get_container(container)
 
         if obj:
             logging.debug("Removing directory %r in %r" % (obj, container))
-            cnt.delete_object(obj)
-            # FIXME directory not empty?
+            try:
+                cnt.delete_object(obj)
+            except(cloudfiles.errors.ResponseError):
+                raise IOSError(ENOTEMPTY, "Directory not empty: '%s'" % container)
             self.listdir_cache.flush()
         else:
             logging.debug("Removing container %r" % (container,))
@@ -367,12 +373,60 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         self.listdir_cache.flush()
         return not name
 
+    def rename_container(self, src_container_name, dst_container_name):
+        '''Rename src_container_name into dst_container_name'''
+        logging.debug("rename container %r -> %r" % (src_container_name, dst_container_name))
+        # Delete the old container first, raising error if not empty
+        try:
+            operations.connection.delete_container(src_container_name)
+        except(cloudfiles.errors.ContainerNotEmpty):
+            raise IOSError(ENOTEMPTY, "Directory not empty: '%s'" % src_container_name)
+        operations.connection.create_container(dst_container_name)
+
     def rename(self, src, dst):
-        '''Rename a file from src to dst, raise OSError on error'''
+        '''Rename a file/directory from src to dst, raise OSError on error'''
         logging.debug("rename %r -> %r" % (src, dst))
-        # FIXME implement this!
+        _, src_container_name, src_path = self.parse_fspath(src)
+        _, dst_container_name, dst_path = self.parse_fspath(dst)
+        # Check if we are renaming containers
+        if not src_path and not dst_path and src_container_name and dst_container_name:
+            return self.rename_container(src_container_name, dst_container_name)
+        # Check for type of rename file/dir -> file/dir
+        if self.isdir(src):
+            if self.listdir(src):
+                raise IOSError(ENOTEMPTY, "Can't rename non-empty directory: '%s'" % src)
+            if self.isfile(dst):
+                raise IOSError(ENOTDIR, "Can't rename directory to file")
+        else:
+            if self.isdir(dst):
+                if dst_path:
+                    dst_path += "/"
+                dst_path += basename(src)
+        logging.debug("`.. %r/%r -> %r/%r" % (src_container_name, src_path, dst_container_name, dst_path))
+        # Can't rename to and from root etc
+        if not src_container_name or not src_path or not dst_container_name or not dst_path:
+            logging.info("Can't copy %r -> %r" % (src, dst))
+            raise IOSError(EACCES, "Can't rename to / from root")
+        # Check destination directory exists
+        if not self.isdir(path_split(dst)[0]):
+            logging.info("Can't copy %r -> %r dst directory doesn't exist" % (src, dst))
+            raise IOSError(ENOENT, 'No such file or directory')
+        # Do the rename of the file/dir
+        src_container = operations.get_container(src_container_name)
+        dst_container = operations.get_container(dst_container_name)
+        try:
+            src_obj = src_container.get_object(src_path)
+        except(cloudfiles.errors.NoSuchObject):
+            raise IOSError(ENOENT, 'No such file or directory')
+        # Copy src -> dst
+        try:
+            src_obj.copy_to(dst_container_name, dst_path)
+        except(cloudfiles.errors.ResponseError), e:
+            logging.debug("Copy failed %r" % e)
+            raise IOSError(ENOENT, 'No such file or directory')
+        # Delete dst
+        src_container.delete_object(src_path)
         self.listdir_cache.flush()
-        raise IOSError(EPERM, 'Operation not permitted')
 
     def isfile(self, path):
         '''Is this path a file.  Shouldn't raise an error if not found like os.path.isfile'''

@@ -163,6 +163,95 @@ class FtpCloudFSTest(unittest.TestCase):
         self.cnx.rmd("potato")
         self.assertEqual(self.cnx.nlst(), [])
 
+    def test_rename_file(self):
+        '''rename a file'''
+        content_string = "Hello Moto" * 100
+        self.create_file("testfile.txt", content_string)
+        self.assertEquals(self.cnx.size("testfile.txt"), len(content_string))
+        self.assertRaises(ftplib.error_perm, self.cnx.size, "testfile2.txt")
+        self.cnx.rename("testfile.txt", "testfile2.txt")
+        self.assertEquals(self.cnx.size("testfile2.txt"), len(content_string))
+        self.assertRaises(ftplib.error_perm, self.cnx.size, "testfile.txt")
+        self.cnx.delete("testfile2.txt")
+
+    def test_rename_file_into_subdir1(self):
+        '''rename a file into a subdirectory 1'''
+        content_string = "Hello Moto"
+        self.create_file("testfile.txt", content_string)
+        self.cnx.mkd("potato")
+        self.assertEquals(self.cnx.size("testfile.txt"), len(content_string))
+        self.assertRaises(ftplib.error_perm, self.cnx.size, "potato/testfile3.txt")
+        self.cnx.rename("testfile.txt", "potato/testfile3.txt")
+        self.assertEquals(self.cnx.size("potato/testfile3.txt"), len(content_string))
+        self.assertRaises(ftplib.error_perm, self.cnx.size, "testfile.txt")
+        self.cnx.delete("potato/testfile3.txt")
+        self.cnx.rmd("potato")
+
+    def test_rename_file_into_subdir2(self):
+        '''rename a file into a subdirectory without specifying dest leaf'''
+        content_string = "Hello Moto"
+        self.create_file("testfile.txt", content_string)
+        self.cnx.mkd("potato")
+        self.assertEquals(self.cnx.size("testfile.txt"), len(content_string))
+        self.assertRaises(ftplib.error_perm, self.cnx.size, "potato/testfile.txt")
+        self.cnx.rename("testfile.txt", "potato")
+        self.assertEquals(self.cnx.size("potato/testfile.txt"), len(content_string))
+        self.assertRaises(ftplib.error_perm, self.cnx.size, "testfile.txt")
+        self.cnx.delete("potato/testfile.txt")
+        self.cnx.rmd("potato")
+
+    def test_rename_file_into_root(self):
+        '''rename a file into a subdirectory without specifying dest leaf'''
+        content_string = "Hello Moto"
+        self.create_file("testfile.txt", content_string)
+        self.assertRaises(ftplib.error_perm, self.cnx.rename, "testfile.txt", "/testfile.txt")
+        self.cnx.delete("testfile.txt")
+
+    def test_rename_directory_into_file(self):
+        '''rename a directory into a file - shouldn't work'''
+        content_string = "Hello Moto"
+        self.create_file("testfile.txt", content_string)
+        self.assertRaises(ftplib.error_perm, self.cnx.rename, "/ftpcloudfs_testing", "testfile.txt")
+        self.cnx.delete("testfile.txt")
+
+    def test_rename_directory_into_directory(self):
+        '''rename a directory into a directory'''
+        self.cnx.mkd("potato")
+        self.assertEquals(self.cnx.nlst("potato"), [])
+        self.cnx.rename("potato", "potato2")
+        self.assertEquals(self.cnx.nlst("potato2"), [])
+        self.cnx.rmd("potato2")
+
+    def test_rename_full_directory(self):
+        '''rename a directory into a directory'''
+        self.cnx.mkd("potato")
+        self.create_file("potato/something.txt", "p")
+        try:
+            self.assertEquals(self.cnx.nlst("potato"), ["something.txt"])
+            self.assertRaises(ftplib.error_perm, self.cnx.rename, "potato", "potato2")
+        finally:
+            self.cnx.delete("potato/something.txt")
+            self.cnx.rmd("potato")
+
+    def test_rename_container(self):
+        '''rename an empty container'''
+        self.cnx.mkd("/potato")
+        self.assertEquals(self.cnx.nlst("/potato"), [])
+        self.assertRaises(ftplib.error_perm, self.cnx.nlst, "/potato2")
+        self.cnx.rename("/potato", "/potato2")
+        self.assertRaises(ftplib.error_perm, self.cnx.nlst, "/potato")
+        self.assertEquals(self.cnx.nlst("/potato2"), [])
+        self.cnx.rmd("/potato2")
+
+    def test_rename_full_container(self):
+        '''rename a full container'''
+        self.cnx.mkd("/potato")
+        self.create_file("/potato/test.txt", "onion")
+        self.assertEquals(self.cnx.nlst("/potato"), ["test.txt"])
+        self.assertRaises(ftplib.error_perm, self.cnx.rename, "/potato", "/potato2")
+        self.cnx.delete("/potato/test.txt")
+        self.cnx.rmd("/potato")
+
     def tearDown(self):
         self.cnx.rmd("/ftpcloudfs_testing")
         self.cnx.close()
