@@ -12,7 +12,7 @@ import rfc822
 import stat
 import sys
 import logging
-from errno import EPERM, ENOENT, EACCES, ENOTEMPTY, ENOTDIR
+from errno import EPERM, ENOENT, EACCES, ENOTEMPTY, ENOTDIR, EIO
 
 from pyftpdlib import ftpserver
 import cloudfiles
@@ -39,6 +39,36 @@ class IOSError(OSError, IOError):
     Using this combined type everywhere fixes the problem at very
     small cost (multiple inheritance!)'''
 
+def cfwrapper(fn, *args, **kwargs):
+    '''Run fn(*args, **kwargs) catching and translating any cloudfiles errors into IOSErrors'''
+    try:
+        return fn(*args, **kwargs)
+    except (cloudfiles.errors.NoSuchContainer,
+            cloudfiles.errors.NoSuchObject):
+        raise IOSError(ENOENT, 'No such file or directory')
+    except cloudfiles.errors.ContainerNotEmpty, e:
+        raise IOSError(ENOTEMPTY, 'Directory not empty: %s' % e)
+    except cloudfiles.errors.ResponseError, e:
+        logging.warning("Response error: %s" % e)
+        # FIXME make some attempt to raise different errors on e.status
+        raise IOSError(EPERM, 'Operation not permitted: %s' % e)
+    except (cloudfiles.errors.AuthenticationError,
+            cloudfiles.errors.AuthenticationFailed,
+            cloudfiles.errors.ContainerNotPublic):
+        raise IOSError(EPERM, 'Operation not permitted')
+    # All the remaining cloudfiles errors.  There is no superclass
+    # otherwise we could have caught that!
+    except (cloudfiles.errors.CDNNotEnabled,
+            cloudfiles.errors.IncompleteSend,
+            cloudfiles.errors.InvalidContainerName,
+            cloudfiles.errors.InvalidMetaName,
+            cloudfiles.errors.InvalidMetaValue,
+            cloudfiles.errors.InvalidObjectName,
+            cloudfiles.errors.InvalidObjectSize,
+            cloudfiles.errors.InvalidUrl), e:
+        logging.warning("Unexpected cloudfiles error: %s" % e)
+        raise IOSError(EIO, 'Unexpected cloudfiles error')
+
 class CloudOperations(object):
     '''Storing connection object'''
 
@@ -61,10 +91,7 @@ class CloudOperations(object):
     def get_container(self, container):
         '''Gets the named container returning a container object, raising
         IOSError if not found'''
-        try:
-            return self.connection.get_container(container)
-        except cloudfiles.errors.NoSuchContainer:
-            raise IOSError(ENOENT, 'No such file or directory')
+        return cfwrapper(self.connection.get_container, container)
 
 operations = CloudOperations()
 
@@ -79,12 +106,11 @@ class RackspaceCloudAuthorizer(ftpserver.DummyAuthorizer):
 
     def validate_authentication(self, username, password):
         try:
-            operations.authenticate(username, password,
-                                    servicenet=self.servicenet,
-                                    authurl=self.authurl)
+            cfwrapper(operations.authenticate,
+                      username, password,
+                      servicenet=self.servicenet, authurl=self.authurl)
             return True
-        except(cloudfiles.errors.AuthenticationFailed,
-               cloudfiles.errors.ResponseError):
+        except EnvironmentError:
             return False
 
     def has_user(self, username):
@@ -124,10 +150,7 @@ class RackspaceCloudFilesFD(object):
         self.container = operations.get_container(self.container)
 
         if 'r' in self.mode:
-            try:
-                self.obj = self.container.get_object(self.name)
-            except(cloudfiles.errors.NoSuchObject):
-                raise IOSError(ENOENT, 'No such file or directory')
+            self.obj = cfwrapper(self.container.get_object, self.name)
         else: #write
             self.obj = ChunkObject(self.container, obj)
             self.obj.content_type = mimetypes.guess_type(obj)[0]
@@ -231,10 +254,7 @@ class ListDirCache(object):
         else:
             # Read info direct from container
             cnt = operations.get_container(container)
-            try:
-                obj = cnt.get_object(path)
-            except cloudfiles.errors.NoSuchObject:
-                raise IOSError(ENOENT, 'No such file or directory')
+            obj = cfwrapper(cnt.get_object, path)
             size = obj.size
             mtime_tuple = rfc822.parsedate(obj.last_modified)
             content_type = obj.content_type
@@ -318,15 +338,8 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         logging.debug("listdir %r" % path)
         container, obj = self.parse_fspath(path)
         if not container:
-            try:
-                return operations.connection.list_containers()
-            except(cloudfiles.errors.ResponseError):
-                raise IOSError(EPERM, 'Operation not permitted')
-        else:
-            try:
-                return self.listdir_cache.listdir(container, obj)
-            except(cloudfiles.errors.NoSuchContainer):
-                raise IOSError(ENOENT, 'No such file or directory')
+            return cfwrapper(operations.connection.list_containers)
+        return cfwrapper(self.listdir_cache.listdir, container, obj)
 
     def rmdir(self, path):
         '''Remove a directory, raise OSError on error'''
@@ -345,17 +358,11 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
 
         if obj:
             logging.debug("Removing directory %r in %r" % (obj, container))
-            try:
-                cnt.delete_object(obj)
-            except(cloudfiles.errors.ResponseError):
-                raise IOSError(ENOTEMPTY, "Directory not empty: '%s'" % container)
+            cfwrapper(cnt.delete_object, obj)
             self.listdir_cache.flush()
         else:
             logging.debug("Removing container %r" % (container,))
-            try:
-                operations.connection.delete_container(container)
-            except(cloudfiles.errors.ContainerNotEmpty):
-                raise IOSError(ENOTEMPTY, "Directory not empty: '%s'" % container)
+            cfwrapper(operations.connection.delete_container, container)
 
     def remove(self, path):
         '''Remove a file, raise OSError on error'''
@@ -366,12 +373,8 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
             raise IOSError(EACCES, 'Operation not permitted')
 
         container = operations.get_container(container)
-        try:
-            obj = container.get_object(name)
-            container.delete_object(obj)
-        except(cloudfiles.errors.NoSuchContainer,
-               cloudfiles.errors.NoSuchObject):
-            raise IOSError(ENOENT, 'No such file or directory')
+        obj = cfwrapper(container.get_object, name)
+        cfwrapper(container.delete_object, obj)
         self.listdir_cache.flush()
         return not name
 
@@ -379,11 +382,8 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         '''Rename src_container_name into dst_container_name'''
         logging.debug("rename container %r -> %r" % (src_container_name, dst_container_name))
         # Delete the old container first, raising error if not empty
-        try:
-            operations.connection.delete_container(src_container_name)
-        except(cloudfiles.errors.ContainerNotEmpty):
-            raise IOSError(ENOTEMPTY, "Directory not empty: '%s'" % src_container_name)
-        operations.connection.create_container(dst_container_name)
+        cfwrapper(operations.connection.delete_container, src_container_name)
+        cfwrapper(operations.connection.create_container, dst_container_name)
 
     def rename(self, src, dst):
         '''Rename a file/directory from src to dst, raise OSError on error'''
@@ -425,16 +425,9 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         # Do the rename of the file/dir
         src_container = operations.get_container(src_container_name)
         dst_container = operations.get_container(dst_container_name)
-        try:
-            src_obj = src_container.get_object(src_path)
-        except(cloudfiles.errors.NoSuchObject):
-            raise IOSError(ENOENT, 'No such file or directory')
+        src_obj = cfwrapper(src_container.get_object, src_path)
         # Copy src -> dst
-        try:
-            src_obj.copy_to(dst_container_name, dst_path)
-        except(cloudfiles.errors.ResponseError), e:
-            logging.debug("Copy failed %r" % e)
-            raise IOSError(ENOENT, 'No such file or directory')
+        cfwrapper(src_obj.copy_to, dst_container_name, dst_path)
         # Delete dst
         src_container.delete_object(src_path)
         self.listdir_cache.flush()
