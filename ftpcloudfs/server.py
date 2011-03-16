@@ -83,7 +83,8 @@ class RackspaceCloudAuthorizer(ftpserver.DummyAuthorizer):
                                     servicenet=self.servicenet,
                                     authurl=self.authurl)
             return True
-        except(cloudfiles.errors.AuthenticationFailed):
+        except(cloudfiles.errors.AuthenticationFailed,
+               cloudfiles.errors.ResponseError):
             return False
 
     def has_user(self, username):
