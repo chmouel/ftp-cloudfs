@@ -19,9 +19,6 @@ import cloudfiles
 
 from monkeypatching import ChunkObject
 
-# FIXME change os.sep to '/' ? os.sep won't work on windows
-# FIXME need to cope with the 0 byte directory being missing otherwise get invisible files on errors
-
 sysinfo = sys.version_info
 LAST_MODIFIED_FORMAT="%Y-%m-%dT%H:%M:%S.%f"
 if sysinfo[0] <= 2 and sysinfo[1] <= 5:
@@ -100,7 +97,7 @@ class RackspaceCloudAuthorizer(ftpserver.DummyAuthorizer):
         return 'lrdw'
 
     def get_home_dir(self, username):
-        return os.sep + username
+        return os.sep
 
     def get_msg_login(self, username):
         return 'Welcome %s' % username
@@ -112,15 +109,14 @@ class RackspaceCloudAuthorizer(ftpserver.DummyAuthorizer):
 class RackspaceCloudFilesFD(object):
     '''Acts like a file() object, but attached to a cloud files object'''
 
-    def __init__(self, username, container, obj, mode):
-        self.username = username
+    def __init__(self, container, obj, mode):
         self.container = container
         self.name = obj
         self.mode = mode
         self.closed = False
         self.total_size = 0
 
-        if not all([username, container, obj]):
+        if not all([container, obj]):
             self.closed = True
             raise IOSError(EPERM, 'Operation not permitted')
 
@@ -257,24 +253,24 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         self.listdir_cache = ListDirCache()
 
     def parse_fspath(self, path):
-        '''Returns a (username, site, filename) tuple. For shorter paths
+        '''Returns a (container, path) tuple. For shorter paths
         replaces not provided values with empty strings.
         May raise IOSError for invalid paths
         '''
         if not path.startswith(os.sep):
             logging.warning('parse_fspath: You have to provide a full path: %r' % path)
             raise IOSError(ENOENT, 'No such file or directory')
-        parts = path.split(os.sep, 3)[1:]
-        while len(parts) < 3:
+        parts = path.split(os.sep, 2)[1:]
+        while len(parts) < 2:
             parts.append('')
         return tuple(parts)
 
     def open(self, path, mode):
         '''Open path with mode, raise IOError on error'''
         logging.debug("open %r mode %r" % (path, mode))
-        username, container, obj = self.parse_fspath(path)
+        container, obj = self.parse_fspath(path)
         self.listdir_cache.flush()
-        return RackspaceCloudFilesFD(username, container, obj, mode)
+        return RackspaceCloudFilesFD(container, obj, mode)
 
     def _set_cwd(self, new_cwd):
         '''Set the self.cwd
@@ -292,7 +288,7 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         logging.debug("chdir %r" % path)
         if not path.startswith(self.root):
             raise IOSError(ENOENT, 'Failed to change directory.')
-        _, container, obj = self.parse_fspath(path)
+        container, obj = self.parse_fspath(path)
         if not container:
             logging.debug("cd to /")
         else:
@@ -304,7 +300,7 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
     def mkdir(self, path):
         '''Make a directory, raise OSError on error'''
         logging.debug("mkdir %r" % path)
-        _, container, obj = self.parse_fspath(path)
+        container, obj = self.parse_fspath(path)
         if obj:
             logging.debug("Making directory %r in %r" % (obj, container))
             cnt = operations.get_container(container)
@@ -319,7 +315,7 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
     def listdir(self, path):
         '''List a directory, raise OSError on error'''
         logging.debug("listdir %r" % path)
-        _, container, obj = self.parse_fspath(path)
+        container, obj = self.parse_fspath(path)
         if not container:
             try:
                 return operations.connection.list_containers()
@@ -334,7 +330,7 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
     def rmdir(self, path):
         '''Remove a directory, raise OSError on error'''
         logging.debug("rmdir %r" % path)
-        _, container, obj = self.parse_fspath(path)
+        container, obj = self.parse_fspath(path)
 
         if not self.isdir(path):
             if self.isfile(path):
@@ -363,7 +359,7 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
     def remove(self, path):
         '''Remove a file, raise OSError on error'''
         logging.debug("remove %r" % path)
-        _, container, name = self.parse_fspath(path)
+        container, name = self.parse_fspath(path)
 
         if not name:
             raise IOSError(EACCES, 'Operation not permitted')
@@ -411,8 +407,8 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
             logging.debug("Renaming %r to itself - doing nothing" % src)
             return
         # Parse the paths now
-        _, src_container_name, src_path = self.parse_fspath(src)
-        _, dst_container_name, dst_path = self.parse_fspath(dst)
+        src_container_name, src_path = self.parse_fspath(src)
+        dst_container_name, dst_path = self.parse_fspath(dst)
         logging.debug("`.. %r/%r -> %r/%r" % (src_container_name, src_path, dst_container_name, dst_path))
         # Check if we are renaming containers
         if not src_path and not dst_path and src_container_name and dst_container_name:
@@ -489,7 +485,7 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
     def stat(self, path):
         '''Return os.stat_result object for path, raise OSError on error'''
         logging.debug("stat %r" % path)
-        _, container, name = self.parse_fspath(path)
+        container, name = self.parse_fspath(path)
         logging.debug("`..container %r path %r" % (container, name))
         mode = 0755|stat.S_IFDIR
         if not name:
