@@ -336,6 +336,11 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         logging.debug("rmdir %r" % path)
         _, container, obj = self.parse_fspath(path)
 
+        if not self.isdir(path):
+            if self.isfile(path):
+                raise IOSError(ENOTDIR, "Not a directory")
+            raise IOSError(ENOENT, 'No such file or directory')
+            
         if self.listdir(path):
             raise IOSError(ENOTEMPTY, "Directory not empty: '%s'" % path)
 
@@ -386,26 +391,35 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
     def rename(self, src, dst):
         '''Rename a file/directory from src to dst, raise OSError on error'''
         logging.debug("rename %r -> %r" % (src, dst))
-        _, src_container_name, src_path = self.parse_fspath(src)
-        _, dst_container_name, dst_path = self.parse_fspath(dst)
-        # Check if we are renaming containers
-        if not src_path and not dst_path and src_container_name and dst_container_name:
-            return self.rename_container(src_container_name, dst_container_name)
-        # Check for type of rename file/dir -> file/dir
+        # Check not renaming to itself
+        if src == dst:
+            logging.debug("Renaming %r to itself - doing nothing" % src)
+            return
+        # If dst is an existing directory, copy src inside it
+        if self.isdir(dst):
+            if dst:
+                dst += "/"
+            dst += basename(src)
+        # Check constraints for renaming a directory
         if self.isdir(src):
             if self.listdir(src):
                 raise IOSError(ENOTEMPTY, "Can't rename non-empty directory: '%s'" % src)
             if self.isfile(dst):
                 raise IOSError(ENOTDIR, "Can't rename directory to file")
-        else:
-            if self.isdir(dst):
-                if dst_path:
-                    dst_path += "/"
-                dst_path += basename(src)
+        # Check not renaming to itself
+        if src == dst:
+            logging.debug("Renaming %r to itself - doing nothing" % src)
+            return
+        # Parse the paths now
+        _, src_container_name, src_path = self.parse_fspath(src)
+        _, dst_container_name, dst_path = self.parse_fspath(dst)
         logging.debug("`.. %r/%r -> %r/%r" % (src_container_name, src_path, dst_container_name, dst_path))
-        # Can't rename to and from root etc
+        # Check if we are renaming containers
+        if not src_path and not dst_path and src_container_name and dst_container_name:
+            return self.rename_container(src_container_name, dst_container_name)
+        # ...otherwise can't deal with root stuff
         if not src_container_name or not src_path or not dst_container_name or not dst_path:
-            logging.info("Can't copy %r -> %r" % (src, dst))
+            logging.info("Can't rename %r -> %r" % (src, dst))
             raise IOSError(EACCES, "Can't rename to / from root")
         # Check destination directory exists
         if not self.isdir(path_split(dst)[0]):

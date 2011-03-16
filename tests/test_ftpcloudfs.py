@@ -222,6 +222,32 @@ class FtpCloudFSTest(unittest.TestCase):
         self.assertEquals(self.cnx.nlst("potato2"), [])
         self.cnx.rmd("potato2")
 
+    def test_rename_directory_into_existing_directory(self):
+        '''rename a directory into an existing directory'''
+        self.cnx.mkd("potato")
+        self.cnx.mkd("potato2")
+        self.assertEquals(self.cnx.nlst("potato"), [])
+        self.assertEquals(self.cnx.nlst("potato2"), [])
+        self.cnx.rename("potato", "potato2")
+        self.assertEquals(self.cnx.nlst("potato2"), ["potato"])
+        self.assertEquals(self.cnx.nlst("potato2/potato"), [])
+        self.cnx.rmd("potato2/potato")
+        self.cnx.rmd("potato2")
+
+    def test_rename_directory_into_self(self):
+        '''rename a directory into itself'''
+        self.cnx.mkd("potato")
+        self.assertEquals(self.cnx.nlst("potato"), [])
+        self.cnx.rename("potato", "/ftpcloudfs_testing")
+        self.assertEquals(self.cnx.nlst("potato"), [])
+        self.cnx.rename("potato", "/ftpcloudfs_testing/potato")
+        self.assertEquals(self.cnx.nlst("potato"), [])
+        self.cnx.rename("potato", "potato")
+        self.assertEquals(self.cnx.nlst("potato"), [])
+        self.cnx.rename("/ftpcloudfs_testing/potato", ".")
+        self.assertEquals(self.cnx.nlst("potato"), [])
+        self.cnx.rmd("potato")
+
     def test_rename_full_directory(self):
         '''rename a directory into a directory'''
         self.cnx.mkd("potato")
