@@ -8,7 +8,6 @@
 import os
 import time
 import mimetypes
-import rfc822
 import stat
 import sys
 import logging
@@ -215,17 +214,29 @@ class ListDirCache(object):
         '''Returns the list dir of the container and fills the cache'''
         logging.debug("listdir container %r path %r" % (container, path))
         cnt = operations.get_container(container)
-        objects = cnt.list_objects_info(path=path, delimiter="/")
+        if path:
+            prefix = path.rstrip("/")+"/"
+        else:
+            prefix = None
+        objects = cnt.list_objects_info(prefix=prefix, delimiter="/")
         self.container = container
         self.path = path
         self.when = time.time()
-        self.cache = dict((basename(o['name']), o) for o in objects)
+        # Keep all names in utf-8, just like the filesystem
+        self.cache = {}
+        self.leaves = []
+        for obj in objects:
+            if 'subdir' in obj:
+                obj['name'] = obj['subdir'].rstrip("/")
+                obj['bytes'] = 0
+                obj['content_type'] = "application/directory"
+                obj['last_modified'] = None
+            name = basename(obj['name']).encode("utf-8")
+            self.cache[name] = obj
         leaves = sorted(self.cache.keys())
         logging.debug(".. %r" % leaves)
-        # FIXME the encode("utf-8") is a bodge for a python-cloudfiles
-        # Which returns unicode strings in list_objects_info, but
-        # utf-8 is needed in get_container
-        return [path.encode("utf-8") for path in leaves]
+        # NB get_objects returns unicode strings but list_containers returns utf-8
+        return leaves
     def valid(self, container, path):
         '''Check the cache is valid for the container and directory path'''
         if not self.cache:
@@ -242,27 +253,20 @@ class ListDirCache(object):
         '''
         directory, leaf = path_split(path)
         logging.debug("stat container %r, path %r, directory %r" % (container, path, directory))
-        if self.valid(container, directory):
-            # Read info from listdir cache
-            try:
-                obj = self.cache[leaf]
-            except KeyError:
-                raise IOSError(ENOENT, 'No such file or directory')
-            size = obj['bytes']
+        # Refresh the cache it if is old, or wrong
+        if not self.valid(container, directory):
+            self.listdir(container, directory)
+        try:
+            obj = self.cache[leaf]
+        except KeyError:
+            logging.warning("Should have found %r in directory listing" % leaf)
+            raise IOSError(ENOENT, 'No such file or directory')
+        if obj['last_modified']:
             mtime_tuple = time.strptime(obj['last_modified'], LAST_MODIFIED_FORMAT)
-            content_type = obj['content_type']
-        else:
-            # Read info direct from container
-            cnt = operations.get_container(container)
-            obj = cfwrapper(cnt.get_object, path)
-            size = obj.size
-            mtime_tuple = rfc822.parsedate(obj.last_modified)
-            content_type = obj.content_type
-        if mtime_tuple:
             mtime = time.mktime(mtime_tuple)
         else:
             mtime = 0
-        return (size, mtime, content_type == "application/directory")
+        return (obj['bytes'], mtime, obj['content_type'] == "application/directory")
     
 class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
     '''Rackspace Cloud Files File system emulation for FTP server.
@@ -339,7 +343,7 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         container, obj = self.parse_fspath(path)
         if not container:
             return cfwrapper(operations.connection.list_containers)
-        return cfwrapper(self.listdir_cache.listdir, container, obj)
+        return self.listdir_cache.listdir(container, obj)
 
     def rmdir(self, path):
         '''Remove a directory, raise OSError on error'''
