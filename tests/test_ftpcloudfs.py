@@ -5,6 +5,7 @@ import sys
 import ftplib
 import StringIO
 from datetime import datetime
+import cloudfiles
 
 from ftpcloudfs.constants import default_address, default_port
 
@@ -20,6 +21,7 @@ class FtpCloudFSTest(unittest.TestCase):
 
         self.username = os.environ['RCLOUD_API_USER']
         self.api_key = os.environ['RCLOUD_API_KEY']
+        self.auth_url = os.environ.get('RCLOUD_AUTH_URL')
         self.cnx = ftplib.FTP()
         self.cnx.host = default_address
         self.cnx.port = default_port
@@ -27,6 +29,8 @@ class FtpCloudFSTest(unittest.TestCase):
         self.cnx.login(self.username, self.api_key)
         self.cnx.mkd("/ftpcloudfs_testing")
         self.cnx.cwd("/ftpcloudfs_testing")
+        self.conn = cloudfiles.get_connection(self.username, self.api_key, authurl=self.auth_url)
+        self.container = self.conn.get_container('ftpcloudfs_testing')
 
     def create_file(self, path, contents):
         '''Create path with contents'''
@@ -278,9 +282,79 @@ class FtpCloudFSTest(unittest.TestCase):
         self.cnx.delete("/potato/test.txt")
         self.cnx.rmd("/potato")
 
+    def test_unicode_file(self):
+        '''Test unicode file creation'''
+        # File names use a utf-8 interface
+        file_name = u"Smiley\u263a.txt".encode("utf-8")
+        self.create_file(file_name, "Hello Moto")
+        self.assertEqual(self.cnx.nlst(), [file_name])
+        self.cnx.delete(file_name)
+
+    def test_unicode_directory(self):
+        '''Test unicode directory creation'''
+        # File names use a utf-8 interface
+        dir_name = u"Smiley\u263aDir".encode("utf-8")
+        self.cnx.mkd(dir_name)
+        self.assertEqual(self.cnx.nlst(), [dir_name])
+        self.cnx.rmd(dir_name)
+
+    def test_mkdir_container_unicode(self):
+        ''' mkdir/chdir/rmdir directory '''
+        directory = u"/Smiley\u263aContainer".encode("utf-8")
+        self.assertEqual(self.cnx.mkd(directory), directory)
+        self.assertEqual(self.cnx.cwd(directory),
+                         '250 "%s" is the current directory.' % (directory))
+        self.assertEqual(self.cnx.rmd(directory), "250 Directory removed.")
+
+    def test_fakedir(self):
+        '''Make some fake directories and test'''
+
+        obj1 = self.container.create_object("test1.txt")
+        obj1.content_type = "text/plain"
+        obj1.write("Hello Moto")
+
+        obj2 = self.container.create_object("potato/test2.txt")
+        obj2.content_type = "text/plain"
+        obj2.write("Hello Moto")
+
+        obj3 = self.container.create_object("potato/sausage/test3.txt")
+        obj3.content_type = "text/plain"
+        obj3.write("Hello Moto")
+
+        obj4 = self.container.create_object("potato/sausage/test4.txt")
+        obj4.content_type = "text/plain"
+        obj4.write("Hello Moto")
+
+        self.assertEqual(self.cnx.nlst(), ["potato", "test1.txt"])
+        self.assertEqual(self.cnx.nlst("potato"), ["sausage","test2.txt"])
+        self.assertEqual(self.cnx.nlst("potato/sausage"), ["test3.txt", "test4.txt"])
+
+        self.cnx.cwd("potato")
+
+        self.assertEqual(self.cnx.nlst(), ["sausage","test2.txt"])
+        self.assertEqual(self.cnx.nlst("sausage"), ["test3.txt", "test4.txt"])
+
+        self.cnx.cwd("sausage")
+
+        self.assertEqual(self.cnx.nlst(), ["test3.txt", "test4.txt"])
+
+        self.cnx.cwd("../..")
+
+        self.container.delete_object(obj1.name)
+        self.container.delete_object(obj2.name)
+        self.container.delete_object(obj3.name)
+        self.container.delete_object(obj4.name)
+
+        self.assertEqual(self.cnx.nlst(), [])
+
     def tearDown(self):
+        # Delete eveything from the container using the API
+        fails = self.container.list_objects()
+        for obj in fails:
+            self.container.delete_object(obj)
         self.cnx.rmd("/ftpcloudfs_testing")
         self.cnx.close()
+        self.assertEquals(fails, [], "The test failed to clean up after itself leaving these objects: %r" % fails)
 
 if __name__ == '__main__':
     unittest.main()
