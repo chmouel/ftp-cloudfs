@@ -180,6 +180,19 @@ class RackspaceCloudFilesFD(object):
         #TODO: properly
         raise IOSError(EPERM, 'Operation not permitted')
 
+def parse_fspath(path):
+    '''Returns a (container, path) tuple. For shorter paths
+    replaces not provided values with empty strings.
+    May raise IOSError for invalid paths
+    '''
+    if not path.startswith(os.sep):
+        logging.warning('parse_fspath: You have to provide an absolute path: %r' % path)
+        raise IOSError(ENOENT, 'No such file or directory')
+    parts = path.split(os.sep, 2)[1:]
+    while len(parts) < 2:
+        parts.append('')
+    return tuple(parts)
+
 def path_split(path):
     '''
     Split a pathname.  Returns tuple "(head, tail)" where "tail" is
@@ -203,15 +216,16 @@ class ListDirCache(object):
     '''
     MAX_CACHE_TIME = 10         # seconds to cache the listdir for
     def __init__(self):
-        self.container = None
         self.path = None
         self.cache = None
         self.when = time.time()
+
     def flush(self):
         '''Flush the listdir cache'''
         self.cache = None
-    def listdir(self, container, path=""):
-        '''Returns the list dir of the container and fills the cache'''
+
+    def listdir_container(self, cache, container, path=""):
+        '''Fills cache with the list dir of the container'''
         logging.debug("listdir container %r path %r" % (container, path))
         cnt = operations.get_container(container)
         if path:
@@ -219,54 +233,87 @@ class ListDirCache(object):
         else:
             prefix = None
         objects = cnt.list_objects_info(prefix=prefix, delimiter="/")
-        self.container = container
-        self.path = path
-        self.when = time.time()
-        # Keep all names in utf-8, just like the filesystem
-        self.cache = {}
-        self.leaves = []
         for obj in objects:
+            # {u'bytes': 4820,  u'content_type': '...',  u'hash': u'...',  u'last_modified': u'2008-11-05T00:56:00.406565',  u'name': u'new_object'},
             if 'subdir' in obj:
+                # {u'subdir': 'dirname'}
                 obj['name'] = obj['subdir'].rstrip("/")
                 obj['bytes'] = 0
-                obj['content_type'] = "application/directory"
-                obj['last_modified'] = None
+            obj['count'] = 1
+            # Keep all names in utf-8, just like the filesystem
             name = basename(obj['name']).encode("utf-8")
-            self.cache[name] = obj
+            cache[name] = obj
+
+    def listdir_root(self, cache):
+        '''Fills cache with the list of containers'''
+        logging.debug("listdir root")
+        objects = cfwrapper(operations.connection.list_containers_info)
+        for obj in objects:
+            # {u'count': 0, u'bytes': 0, u'name': u'container1'},
+            # Keep all names in utf-8, just like the filesystem
+            name = obj['name'].encode("utf-8")
+            cache[name] = obj
+
+    def listdir(self, path):
+        '''Return the directory list of the path, filling the cache in the process'''
+        path = path.rstrip("/")
+        logging.debug("listdir %r" % path)
+        self.flush()
+        cache = {}
+        if path == "":
+            self.cache = self.listdir_root(cache)
+        else:
+            container, obj = parse_fspath(path)
+            self.cache = self.listdir_container(cache, container, obj)
+        self.cache = cache
+        self.path = path
+        self.when = time.time()
         leaves = sorted(self.cache.keys())
         logging.debug(".. %r" % leaves)
-        # NB get_objects returns unicode strings but list_containers returns utf-8
         return leaves
-    def valid(self, container, path):
+
+    def valid(self, path):
         '''Check the cache is valid for the container and directory path'''
         if not self.cache:
             return False
-        if self.container != container or self.path != path:
+        if self.path != path:
             return False
         age = time.time() - self.when
         return age < self.MAX_CACHE_TIME
-    def stat(self, container, path):
-        '''Returns (size, mtime, is_directory) for path in container or raises
-        OSError
+
+    def stat(self, path):
+        '''Returns an os.stat_result for path or raises IOSError
 
         Returns the information from the cache if possible
         '''
+        path = path.rstrip("/")
+        logging.debug("stat path %r" % (path))
         directory, leaf = path_split(path)
-        logging.debug("stat container %r, path %r, directory %r" % (container, path, directory))
         # Refresh the cache it if is old, or wrong
-        if not self.valid(container, directory):
-            self.listdir(container, directory)
-        try:
-            obj = self.cache[leaf]
-        except KeyError:
-            logging.warning("Should have found %r in directory listing" % leaf)
-            raise IOSError(ENOENT, 'No such file or directory')
-        if obj['last_modified']:
+        if not self.valid(directory):
+            self.listdir(directory)
+        if path != "":
+            try:
+                obj = self.cache[leaf]
+            except KeyError:
+                logging.warning("Should have found %r in directory listing" % leaf)
+                raise IOSError(ENOENT, 'No such file or directory')
+        else:
+            # Root directory size is sum of containers, count is containers
+            bytes = sum(obj['bytes'] for obj in self.cache.values())
+            count = len(self.cache)
+            obj = dict(count=count, bytes=bytes)
+        if 'last_modified' in obj:
             mtime_tuple = time.strptime(obj['last_modified'], LAST_MODIFIED_FORMAT)
             mtime = time.mktime(mtime_tuple)
         else:
-            mtime = 0
-        return (obj['bytes'], mtime, obj['content_type'] == "application/directory")
+            mtime = time.time()
+        if obj.get('content_type', "application/directory") == "application/directory":
+            mode = 0755|stat.S_IFDIR
+        else:
+            mode = 0644|stat.S_IFREG
+        #(mode, ino, dev, nlink, uid, gid, size, atime, mtime, ctime)
+        return os.stat_result((mode, 0L, 0L, obj['count'], 0, 0, obj['bytes'], mtime, mtime, mtime))
     
 class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
     '''Rackspace Cloud Files File system emulation for FTP server.
@@ -277,24 +324,11 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         # A cache to hold the information from the last listdir
         self.listdir_cache = ListDirCache()
 
-    def parse_fspath(self, path):
-        '''Returns a (container, path) tuple. For shorter paths
-        replaces not provided values with empty strings.
-        May raise IOSError for invalid paths
-        '''
-        if not path.startswith(os.sep):
-            logging.warning('parse_fspath: You have to provide a full path: %r' % path)
-            raise IOSError(ENOENT, 'No such file or directory')
-        parts = path.split(os.sep, 2)[1:]
-        while len(parts) < 2:
-            parts.append('')
-        return tuple(parts)
-
     def open(self, path, mode):
         '''Open path with mode, raise IOError on error'''
         logging.debug("open %r mode %r" % (path, mode))
-        container, obj = self.parse_fspath(path)
         self.listdir_cache.flush()
+        container, obj = parse_fspath(path)
         return RackspaceCloudFilesFD(container, obj, mode)
 
     def _set_cwd(self, new_cwd):
@@ -313,7 +347,7 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         logging.debug("chdir %r" % path)
         if not path.startswith(self.root):
             raise IOSError(ENOENT, 'Failed to change directory.')
-        container, obj = self.parse_fspath(path)
+        container, obj = parse_fspath(path)
         if not container:
             logging.debug("cd to /")
         else:
@@ -325,14 +359,14 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
     def mkdir(self, path):
         '''Make a directory, raise OSError on error'''
         logging.debug("mkdir %r" % path)
-        container, obj = self.parse_fspath(path)
+        self.listdir_cache.flush()
+        container, obj = parse_fspath(path)
         if obj:
             logging.debug("Making directory %r in %r" % (obj, container))
             cnt = operations.get_container(container)
             directory_obj = cnt.create_object(obj)
             directory_obj.content_type = "application/directory"
             directory_obj.write("")
-            self.listdir_cache.flush()
         else:
             logging.debug("Making container %r" % (container,))
             operations.connection.create_container(container)
@@ -340,15 +374,13 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
     def listdir(self, path):
         '''List a directory, raise OSError on error'''
         logging.debug("listdir %r" % path)
-        container, obj = self.parse_fspath(path)
-        if not container:
-            return cfwrapper(operations.connection.list_containers)
-        return self.listdir_cache.listdir(container, obj)
+        return self.listdir_cache.listdir(path)
 
     def rmdir(self, path):
         '''Remove a directory, raise OSError on error'''
         logging.debug("rmdir %r" % path)
-        container, obj = self.parse_fspath(path)
+        self.listdir_cache.flush()
+        container, obj = parse_fspath(path)
 
         if not self.isdir(path):
             if self.isfile(path):
@@ -363,7 +395,6 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         if obj:
             logging.debug("Removing directory %r in %r" % (obj, container))
             cfwrapper(cnt.delete_object, obj)
-            self.listdir_cache.flush()
         else:
             logging.debug("Removing container %r" % (container,))
             cfwrapper(operations.connection.delete_container, container)
@@ -371,7 +402,8 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
     def remove(self, path):
         '''Remove a file, raise OSError on error'''
         logging.debug("remove %r" % path)
-        container, name = self.parse_fspath(path)
+        self.listdir_cache.flush()
+        container, name = parse_fspath(path)
 
         if not name:
             raise IOSError(EACCES, 'Operation not permitted')
@@ -379,7 +411,6 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         container = operations.get_container(container)
         obj = cfwrapper(container.get_object, name)
         cfwrapper(container.delete_object, obj)
-        self.listdir_cache.flush()
         return not name
 
     def rename_container(self, src_container_name, dst_container_name):
@@ -392,6 +423,7 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
     def rename(self, src, dst):
         '''Rename a file/directory from src to dst, raise OSError on error'''
         logging.debug("rename %r -> %r" % (src, dst))
+        self.listdir_cache.flush()
         # Check not renaming to itself
         if src == dst:
             logging.debug("Renaming %r to itself - doing nothing" % src)
@@ -412,8 +444,8 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
             logging.debug("Renaming %r to itself - doing nothing" % src)
             return
         # Parse the paths now
-        src_container_name, src_path = self.parse_fspath(src)
-        dst_container_name, dst_path = self.parse_fspath(dst)
+        src_container_name, src_path = parse_fspath(src)
+        dst_container_name, dst_path = parse_fspath(dst)
         logging.debug("`.. %r/%r -> %r/%r" % (src_container_name, src_path, dst_container_name, dst_path))
         # Check if we are renaming containers
         if not src_path and not dst_path and src_container_name and dst_container_name:
@@ -434,7 +466,6 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
         cfwrapper(src_obj.copy_to, dst_container_name, dst_path)
         # Delete dst
         src_container.delete_object(src_path)
-        self.listdir_cache.flush()
 
     def isfile(self, path):
         '''Is this path a file.  Shouldn't raise an error if not found like os.path.isfile'''
@@ -483,21 +514,7 @@ class RackspaceCloudFilesFS(ftpserver.AbstractedFS):
     def stat(self, path):
         '''Return os.stat_result object for path, raise OSError on error'''
         logging.debug("stat %r" % path)
-        container, name = self.parse_fspath(path)
-        logging.debug("`..container %r path %r" % (container, name))
-        mode = 0755|stat.S_IFDIR
-        if not name:
-            if container:
-                # If not root check container exists or not
-                operations.get_container(container)
-            mtime = time.time()
-            return os.stat_result((mode, 0L, 0L, 1, 0, 0, 4096, mtime, mtime, mtime))
-        size, mtime, is_dir = self.listdir_cache.stat(container, name)
-        logging.debug("`...size = %r, mtime = %r, is_dir = %r" % (size, mtime, is_dir))
-        #(mode, ino, dev, nlink, uid, gid, size, atime, mtime, ctime)
-        if not is_dir:
-            mode = 0644|stat.S_IFREG
-        return os.stat_result((mode, 0L, 0L, 1, 0, 0, size, mtime, mtime, mtime))
+        return self.listdir_cache.stat(path)
 
     exists = lexists
     lstat = stat
