@@ -55,6 +55,13 @@ Or if you have `pip`_ installed you can just do a ::
 
 which will install ftp-cloudfs with all the dependences needed.
 
+On a Debian/Ubuntu the preferred way to install would be like this::
+
+  apt-get -y install python-daemon python-stdeb
+  pypi-install python-cloudfiles
+  pypi-install pyftpdlib
+  pypi-install ftp-cloudfs
+
 .. _`pip`: http://pip.openplans.org/
 
 USAGE
