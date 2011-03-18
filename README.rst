@@ -19,7 +19,7 @@ a non root/administrator user.
 .. _OpenStack Swift: http://launchpad.net/swift
 .. _RackSpace Cloud Files: http://www.rackspace.com/cloud/cloud_hosting_products/files/
 
-It supports pseudo-hierachical folders/directories as described in the `Rackspace Cloud Files API`_ and the `OpenStack Object Storage API`_.
+It supports pseudo-hierarchical folders/directories as described in the `Rackspace Cloud Files API`_ and the `OpenStack Object Storage API`_.
 
 .. _Rackspace Cloud Files API: http://docs.rackspacecloud.com/files/api/cf-devguide-latest.pdf
 .. _OpenStack Object Storage API: http://docs.openstack.org/openstack-object-storage/developer/content/
@@ -53,7 +53,7 @@ Or if you have `pip`_ installed you can just do a ::
 
   pip install ftp-cloudfs
 
-which will install ftp-cloudfs with all the dependences needed.
+which will install ftp-cloudfs with all the dependencies needed.
 
 On a Debian/Ubuntu the preferred way to install would be like this::
 
@@ -79,12 +79,12 @@ Usage: ftpcloudfs [OPTIONS].....
   -a AUTHURL, --auth-url=AUTHURL
                         Auth URL for alternate providers(eg OpenStack)
   -s, --service-net     Connect via Rackspace ServiceNet network.
-  -f, --foreground      Do not attempt to daemonize butrun in foreground.
+  -f, --foreground      Do not attempt to daemonize but run in foreground.
   -l LOG_FILE, --log-file=LOG_FILE
                         Log File: Default stdout when in foreground
   --pid-file=PID_FILE   Pid file location when in daemon mode.
-  --uid=UID             UID to drop the privilige to when in daemon mode
-  --gid=GID             GID to drop the privilige to when in daemon mode
+  --uid=UID             UID to drop the privilege to when in daemon mode
+  --gid=GID             GID to drop the privilege to when in daemon mode
 
 SUPPORT
 =======
@@ -124,7 +124,7 @@ exceptions contain licensing information in them.
 
   Except as contained in this notice, the name of Rackspace US, Inc. shall not
   be used in advertising or otherwise to promote the sale, use or other dealings
-  in this Software without prior written authorization from Rackspace US, Inc. 
+  in this Software without prior written authorisation from Rackspace US, Inc. 
 
 Author
 ======
