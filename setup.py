@@ -4,7 +4,11 @@ from setuptools import setup, find_packages
 from ftpcloudfs.constants import version
 
 def read(fname):
-    return open(os.path.join(os.path.dirname(__file__), fname)).read()
+    full_path = os.path.join(os.path.dirname(__file__), fname)
+    if os.path.exists(fname):
+        return open(full_path).read()
+    else:
+        return ""
 
 setup(name='ftp-cloudfs',
       version=version,
