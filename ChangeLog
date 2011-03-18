@@ -1,3 +1,7 @@
+2011-02-19  Chmouel Boudjnah  <chmouel.boudjnah@rackspace.co.uk>
+   * 0.6
+   - Daemonize ftp-cloudfs with python-daemon.
+
 2011-02-12  Chmouel Boudjnah  <chmouel.boudjnah@rackspace.co.uk>
 
    * 0.5:
