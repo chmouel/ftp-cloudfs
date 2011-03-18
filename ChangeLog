@@ -1,3 +1,15 @@
+2011-03-18 Chmouel Boudjnah  <chmouel.boudjnah@rackspace.co.uk>
+   * 0.7
+	A lot of improvement and fixes from Nick Craig-Wood nick@craig-wood.com
+	highlights are (see commmit for details) :
+
+   - Pseudo-hierachical folders/directories supported
+   - Containers show size in listings
+   - Logging in server module
+   - Attempt to catch and translate all cloudfiles errors with correct error numbers
+   - Rename support
+   - Lots of tests
+
 2011-02-19  Chmouel Boudjnah  <chmouel.boudjnah@rackspace.co.uk>
    * 0.6
    - Daemonize ftp-cloudfs with python-daemon.
