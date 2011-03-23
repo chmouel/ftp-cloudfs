@@ -99,9 +99,7 @@ https://github.com/chmouel/ftp-cloudfs/issues
 BUGS
 ====
 
-- Currently cat'ing a file is not working and connection would not get close. There is patch for pyftpdlibs awaiting to fix that `here`_ 
-
-.. _`here`: http://goo.gl/0dBMc
+None known ;-)
 
 LICENSE
 =======

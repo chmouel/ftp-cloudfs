@@ -170,7 +170,7 @@ class RackspaceCloudFilesFD(object):
         if (self.total_size + size) > self.obj.size:
             readsize = self.obj.size - self.total_size
         if self.total_size >= self.obj.size:
-            return
+            return ""
         else:
             offset = self.total_size
             self.total_size += size
