@@ -7,7 +7,7 @@ import logging
 from optparse import OptionParser
 from pyftpdlib import ftpserver
 
-from server import RackspaceCloudAuthorizer, RackspaceCloudFilesFS
+from server import RackspaceCloudAuthorizer, RackspaceCloudFilesFS, get_abstracted_fs
 from constants import version, default_address, default_port
 from monkeypatching import MyDTPHandler
 
@@ -110,10 +110,10 @@ class Main(object):
         ftp_handler.banner = 'Rackspace Cloud Files %s using %s' % \
             (version, ftp_handler.banner)
         ftp_handler.authorizer = RackspaceCloudAuthorizer()
-        ftp_handler.authorizer.servicenet = self.options.servicenet
-        ftp_handler.authorizer.authurl = self.options.authurl
+        RackspaceCloudFilesFS.servicenet = self.options.servicenet
+        RackspaceCloudFilesFS.authurl = self.options.authurl
 
-        ftp_handler.abstracted_fs = RackspaceCloudFilesFS
+        ftp_handler.abstracted_fs = staticmethod(get_abstracted_fs)
 
         try:
             ftp_handler.masquerade_address = \
