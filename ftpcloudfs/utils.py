@@ -2,6 +2,7 @@ import types
 import fcntl
 import os
 
+
 class PidFile(object):
     """Context manager that locks a pid file."""
     def __init__(self, path):

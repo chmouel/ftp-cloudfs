@@ -7,7 +7,8 @@ import logging
 from optparse import OptionParser
 from pyftpdlib import ftpserver
 
-from server import RackspaceCloudAuthorizer, RackspaceCloudFilesFS, get_abstracted_fs
+from server import RackspaceCloudAuthorizer, RackspaceCloudFilesFS, \
+    get_abstracted_fs
 from constants import version, default_address, default_port
 from monkeypatching import MyDTPHandler
 
@@ -71,7 +72,7 @@ class Main(object):
                           dest="foreground",
                           default=False,
                           help="Do not attempt to daemonize but" + \
-                              "run in foreground.")    
+                              "run in foreground.")
 
         parser.add_option('-l', '--log-file',
                           type="str",
@@ -131,31 +132,33 @@ class Main(object):
         import daemon
         from utils import PidFile
         import tempfile
-        
+
         daemonContext = daemon.DaemonContext()
 
         if not self.options.pid_file:
-            self.options.pid_file = "%s/ftpcloudfs" % (tempfile.gettempdir())
+            self.options.pid_file = "%s/ftpcloudfs.pid" % \
+                (tempfile.gettempdir())
 
-        daemonContext.pidfile=PidFile(self.options.pid_file)
+        #daemonContext.pidfile = PidFile(self.options.pid_file)
 
         if self.options.uid:
             daemonContext.uid = self.options.uid
 
         if self.options.gid:
             daemonContext.gid = self.options.gid
-        
+
         return daemonContext
 
     def main(self):
         """ Main entry point"""
         self.parse_arguments()
-        self.setup_log()
 
         if self.options.foreground:
+            self.setup_log()
             self.run_server()
             return
 
         daemonContext = self.setup_daemon()
         with daemonContext:
+            self.setup_log()
             self.run_server()
