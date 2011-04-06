@@ -120,6 +120,7 @@ class CloudFilesFD(object):
 
     def seek(self, *kargs, **kwargs):
         '''Seek in the object: FIXME doesn't work and raises an error'''
+        logging.debug("seek args=%s, kargs=%s" % (str(kargs), str(kwargs)))
         raise IOSError(EPERM, "Seek not implemented")
 
 class ListDirCache(object):

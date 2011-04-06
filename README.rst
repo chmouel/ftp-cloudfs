@@ -78,6 +78,7 @@ Usage: ftpcloudfs [OPTIONS].....
                         Address to bind by default: 127.0.0.1.
   -a AUTHURL, --auth-url=AUTHURL
                         Auth URL for alternate providers(eg OpenStack)
+  -v, --verbose         Be verbose on logging.
   -s, --service-net     Connect via Rackspace ServiceNet network.
   -f, --foreground      Do not attempt to daemonize but run in foreground.
   -l LOG_FILE, --log-file=LOG_FILE

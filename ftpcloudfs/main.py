@@ -32,10 +32,13 @@ class Main(object):
         ftpserver.logline = lambda msg: log(logging.debug, msg)
         ftpserver.logerror = lambda msg: log(logging.error, msg)
 
+        if self.options.log_level is True:
+            self.options.log_level = logging.DEBUG
+
         log_format = '%(asctime)-15s - %(levelname)s - %(message)s'
         logging.basicConfig(filename=self.options.log_file,
                             format=log_format,
-                            level=logging.DEBUG)
+                            level=self.options.log_level)
 
     def parse_arguments(self):
         ''' Parse Command Line Options '''
@@ -66,6 +69,12 @@ class Main(object):
                           dest="servicenet",
                           default=False,
                           help="Connect via Rackspace ServiceNet network.")
+
+        parser.add_option('-v', '--verbose',
+                          action="store_true",
+                          dest="log_level",
+                          default=logging.INFO,
+                          help="Be verbose on logging.")
 
         parser.add_option('-f', '--foreground',
                           action="store_true",
