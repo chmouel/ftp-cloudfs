@@ -18,6 +18,9 @@
 # Be verbose on logging.
 # verbose = no
 
+# Enable logging to the system logger.
+# syslog = no
+
 # Log file location.
 # log-file = (empty)
 

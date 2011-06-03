@@ -64,6 +64,7 @@ class Main(object):
                                   'auth-url': None,
                                   'service-net': 'no',
                                   'verbose': 'no',
+                                  'syslog': 'no',
                                   'log-file': None,
                                   'pid-file': None,
                                   'uid': None,
@@ -127,7 +128,7 @@ class Main(object):
         parser.add_option('--syslog',
                           action="store_true",
                           dest="syslog",
-                          default=None,
+                          default=self.config.getboolean('ftpcloudfs', 'syslog'),
                           help="Enable logging to the system logger " + \
                               "(daemon facility).")
 
