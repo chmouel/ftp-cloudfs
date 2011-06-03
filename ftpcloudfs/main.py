@@ -2,6 +2,7 @@
 __author__ = "Chmouel Boudjnah <chmouel@chmouel.com>"
 import sys
 import socket
+from ConfigParser import RawConfigParser
 import logging
 
 from optparse import OptionParser
@@ -9,7 +10,8 @@ from pyftpdlib import ftpserver
 
 from server import RackspaceCloudAuthorizer, RackspaceCloudFilesFS, \
     get_abstracted_fs
-from constants import version, default_address, default_port
+from constants import version, default_address, default_port, \
+    default_config_file
 from monkeypatching import MyDTPHandler
 
 
@@ -32,13 +34,33 @@ class Main(object):
         ftpserver.logline = lambda msg: log(logging.debug, msg)
         ftpserver.logerror = lambda msg: log(logging.error, msg)
 
-        if self.options.log_level is True:
+        if self.options.log_level:
             self.options.log_level = logging.DEBUG
+        else:
+            self.options.log_level = logging.INFO
 
         log_format = '%(asctime)-15s - %(levelname)s - %(message)s'
         logging.basicConfig(filename=self.options.log_file,
                             format=log_format,
                             level=self.options.log_level)
+
+    def parse_configuration(self, config_file=default_config_file):
+        ''' Parse Configuration File '''
+        config = RawConfigParser({'port': default_port,
+                                  'bind-address': default_address,
+                                  'auth-url': None,
+                                  'service-net': 'no',
+                                  'verbose': 'no',
+                                  'log-file': None,
+                                  'pid-file': None,
+                                  'uid': None,
+                                  'gid': None,
+                                 })
+        config.read(default_config_file)
+        if not config.has_section('ftpcloudfs'):
+            config.add_section('ftpcloudfs')
+
+        self.config = config
 
     def parse_arguments(self):
         ''' Parse Command Line Options '''
@@ -46,34 +68,34 @@ class Main(object):
         parser.add_option('-p', '--port',
                           type="int",
                           dest="port",
-                          default=default_port,
+                          default=self.config.get('ftpcloudfs', 'port'),
                           help="Port to bind the server default: %d." % \
                               (default_port))
 
         parser.add_option('-b', '--bind-address',
                           type="str",
                           dest="bind_address",
-                          default=default_address,
+                          default=self.config.get('ftpcloudfs', 'bind-address'),
                           help="Address to bind by default: %s." % \
                               (default_address))
 
         parser.add_option('-a', '--auth-url',
                           type="str",
                           dest="authurl",
-                          default=None,
+                          default=self.config.get('ftpcloudfs', 'auth-url'),
                           help="Auth URL for alternate providers" + \
                               "(eg OpenStack)")
 
         parser.add_option('-s', '--service-net',
                           action="store_true",
                           dest="servicenet",
-                          default=False,
+                          default=self.config.getboolean('ftpcloudfs', 'service-net'),
                           help="Connect via Rackspace ServiceNet network.")
 
         parser.add_option('-v', '--verbose',
                           action="store_true",
                           dest="log_level",
-                          default=logging.INFO,
+                          default=self.config.getboolean('ftpcloudfs', 'verbose'),
                           help="Be verbose on logging.")
 
         parser.add_option('-f', '--foreground',
@@ -86,26 +108,26 @@ class Main(object):
         parser.add_option('-l', '--log-file',
                           type="str",
                           dest="log_file",
-                          default=None,
+                          default=self.config.get('ftpcloudfs', 'log-file'),
                           help="Log File: Default stdout when in foreground")
 
         parser.add_option('--pid-file',
                           type="str",
                           dest="pid_file",
-                          default=None,
+                          default=self.config.get('ftpcloudfs', 'pid-file'),
                           help="Pid file location when in daemon mode.")
 
         parser.add_option('--uid',
                           type="int",
                           dest="uid",
-                          default=None,
+                          default=self.config.get('ftpcloudfs', 'uid'),
                           help="UID to drop the privilige to " + \
                               "when in daemon mode")
 
         parser.add_option('--gid',
                           type="int",
                           dest="gid",
-                          default=None,
+                          default=self.config.get('ftpcloudfs', 'gid'),
                           help="GID to drop the privilige to " + \
                               "when in daemon mode")
 
@@ -160,6 +182,7 @@ class Main(object):
 
     def main(self):
         """ Main entry point"""
+        self.parse_configuration()
         self.parse_arguments()
 
         if self.options.foreground:

@@ -1,0 +1,33 @@
+# ftpcloudfs example configuration file
+# 
+
+[ftpcloudfs]
+
+# Port to bind.
+# port = 2022
+
+# Address to bind.
+# bind-address = 127.0.0.1
+
+# Auth URL for alternate providers (eg OpenStack)
+# auth-url = (empty)
+
+# Connect via Rackspace ServiceNet network.
+# service-net = no
+
+# Be verbose on logging.
+# verbose = no
+
+# Log file location.
+# log-file = (empty)
+
+# Pid file location when in daemon mode.
+# pid-file = (empty)
+
+# UID to drop priviliges when in daemon mode.
+# uid = (empty)
+
+# GID to drop priviliges when in daemon mode.
+# gid = (empty)
+
+# EOF
