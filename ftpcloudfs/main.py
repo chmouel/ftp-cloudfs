@@ -4,6 +4,7 @@ import sys
 import socket
 from ConfigParser import RawConfigParser
 import logging
+from logging.handlers import SysLogHandler
 
 from optparse import OptionParser
 from pyftpdlib import ftpserver
@@ -29,7 +30,7 @@ class Main(object):
             """
             Dummy function.
             """
-            log_type(msg)
+            log_type(u"%s: %s" % (__package__, msg))
         ftpserver.log = lambda msg: log(logging.info, msg)
         ftpserver.logline = lambda msg: log(logging.debug, msg)
         ftpserver.logerror = lambda msg: log(logging.error, msg)
@@ -39,10 +40,22 @@ class Main(object):
         else:
             self.options.log_level = logging.INFO
 
-        log_format = '%(asctime)-15s - %(levelname)s - %(message)s'
-        logging.basicConfig(filename=self.options.log_file,
-                            format=log_format,
-                            level=self.options.log_level)
+        if self.options.syslog is True:
+            logger = logging.getLogger()
+            try:
+                handler = SysLogHandler(address='/dev/log',
+                                        facility=SysLogHandler.LOG_DAEMON)
+            except IOError:
+                # fall back to UDP
+                handler = SysLogHandler(facility=SysLogHandler.LOG_DAEMON)
+            finally:
+                logger.addHandler(handler)
+                logger.setLevel(self.options.log_level)
+        else:
+            log_format = '%(asctime)-15s - %(levelname)s - %(message)s'
+            logging.basicConfig(filename=self.options.log_file,
+                                format=log_format,
+                                level=self.options.log_level)
 
     def parse_configuration(self, config_file=default_config_file):
         ''' Parse Configuration File '''
@@ -64,7 +77,7 @@ class Main(object):
 
     def parse_arguments(self):
         ''' Parse Command Line Options '''
-        parser = OptionParser(usage="ftpcloudfs [OPTIONS].....")
+        parser = OptionParser(usage="%s [OPTIONS]....." % __package__)
         parser.add_option('-p', '--port',
                           type="int",
                           dest="port",
@@ -110,6 +123,13 @@ class Main(object):
                           dest="log_file",
                           default=self.config.get('ftpcloudfs', 'log-file'),
                           help="Log File: Default stdout when in foreground")
+
+        parser.add_option('--syslog',
+                          action="store_true",
+                          dest="syslog",
+                          default=None,
+                          help="Enable logging to the system logger " + \
+                              "(daemon facility).")
 
         parser.add_option('--pid-file',
                           type="str",
