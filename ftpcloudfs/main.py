@@ -191,7 +191,7 @@ class Main(object):
             self.options.pid_file = "%s/ftpcloudfs.pid" % \
                 (tempfile.gettempdir())
 
-        #daemonContext.pidfile = PidFile(self.options.pid_file)
+        daemonContext.pidfile = PidFile(self.options.pid_file)
 
         if self.options.uid:
             daemonContext.uid = self.options.uid
