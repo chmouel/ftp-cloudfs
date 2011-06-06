@@ -12,7 +12,7 @@ from pyftpdlib import ftpserver
 from server import RackspaceCloudAuthorizer, RackspaceCloudFilesFS, \
     get_abstracted_fs
 from constants import version, default_address, default_port, \
-    default_config_file
+    default_config_file, default_banner
 from monkeypatching import MyDTPHandler
 
 
@@ -59,7 +59,8 @@ class Main(object):
 
     def parse_configuration(self, config_file=default_config_file):
         ''' Parse Configuration File '''
-        config = RawConfigParser({'port': default_port,
+        config = RawConfigParser({'banner': default_banner,
+                                  'port': default_port,
                                   'bind-address': default_address,
                                   'auth-url': None,
                                   'service-net': 'no',
@@ -160,8 +161,10 @@ class Main(object):
         ftp_handler = ftpserver.FTPHandler
         ftp_handler.dtp_handler = MyDTPHandler
 
-        ftp_handler.banner = 'Rackspace Cloud Files %s using %s' % \
-            (version, ftp_handler.banner)
+        banner = self.config.get('ftpcloudfs', 'banner').replace('%v', version)
+        banner = banner.replace('%f', ftpserver.__ver__)
+
+        ftp_handler.banner = banner
         ftp_handler.authorizer = RackspaceCloudAuthorizer()
         RackspaceCloudFilesFS.servicenet = self.options.servicenet
         RackspaceCloudFilesFS.authurl = self.options.authurl

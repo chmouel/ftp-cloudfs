@@ -1,7 +1,10 @@
 # ftpcloudfs example configuration file
-# 
+#
 
 [ftpcloudfs]
+
+# FTP banner (%v version, %f ftp handler version)
+# banner = Rackspace Cloud Files %v using pyftpdlib %f ready.
 
 # Port to bind.
 # port = 2022
