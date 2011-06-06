@@ -156,7 +156,7 @@ class Main(object):
         (options, _) = parser.parse_args()
         self.options = options
 
-    def run_server(self):
+    def setup_server(self):
         """Run the main ftp server loop"""
         ftp_handler = ftpserver.FTPHandler
         ftp_handler.dtp_handler = MyDTPHandler
@@ -180,10 +180,9 @@ class Main(object):
         ftpd = ftpserver.FTPServer((self.options.bind_address,
                                     self.options.port),
                                    ftp_handler)
+        return ftpd
 
-        ftpd.serve_forever()
-
-    def setup_daemon(self):
+    def setup_daemon(self, preserve=None):
         import daemon
         from utils import PidFile
         import tempfile
@@ -202,6 +201,9 @@ class Main(object):
         if self.options.gid:
             daemonContext.gid = self.options.gid
 
+        if preserve:
+            daemonContext.files_preserve = preserve
+
         return daemonContext
 
     def main(self):
@@ -209,12 +211,14 @@ class Main(object):
         self.parse_configuration()
         self.parse_arguments()
 
+        ftpd = self.setup_server()
+
         if self.options.foreground:
             self.setup_log()
-            self.run_server()
+            ftpd.serve_forever()
             return
 
-        daemonContext = self.setup_daemon()
+        daemonContext = self.setup_daemon([ftpd.socket.fileno(),])
         with daemonContext:
             self.setup_log()
-            self.run_server()
+            ftpd.serve_forever()
