@@ -99,7 +99,7 @@ class Main(object):
                           dest="authurl",
                           default=self.config.get('ftpcloudfs', 'auth-url'),
                           help="Auth URL for alternate providers" + \
-                              "(eg OpenStack)")
+                              "(eg OpenStack).")
 
         parser.add_option('-s', '--service-net',
                           action="store_true",
@@ -117,14 +117,14 @@ class Main(object):
                           action="store_true",
                           dest="foreground",
                           default=False,
-                          help="Do not attempt to daemonize but" + \
+                          help="Do not attempt to daemonize but " + \
                               "run in foreground.")
 
         parser.add_option('-l', '--log-file',
                           type="str",
                           dest="log_file",
                           default=self.config.get('ftpcloudfs', 'log-file'),
-                          help="Log File: Default stdout when in foreground")
+                          help="Log File: Default stdout when in foreground.")
 
         parser.add_option('--syslog',
                           action="store_true",
@@ -144,14 +144,14 @@ class Main(object):
                           dest="uid",
                           default=self.config.get('ftpcloudfs', 'uid'),
                           help="UID to drop the privilige to " + \
-                              "when in daemon mode")
+                              "when in daemon mode.")
 
         parser.add_option('--gid',
                           type="int",
                           dest="gid",
                           default=self.config.get('ftpcloudfs', 'gid'),
                           help="GID to drop the privilige to " + \
-                              "when in daemon mode")
+                              "when in daemon mode.")
 
         (options, _) = parser.parse_args()
         self.options = options
