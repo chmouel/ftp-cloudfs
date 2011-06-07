@@ -83,9 +83,13 @@ Usage: ftpcloudfs [OPTIONS].....
   -f, --foreground      Do not attempt to daemonize but run in foreground.
   -l LOG_FILE, --log-file=LOG_FILE
                         Log File: Default stdout when in foreground
+  --syslog              Enable logging to the system logger (daemon facility).
   --pid-file=PID_FILE   Pid file location when in daemon mode.
   --uid=UID             UID to drop the privilege to when in daemon mode
   --gid=GID             GID to drop the privilege to when in daemon mode
+
+The defaults can be changed using a configuration file (by default in
+/etc/ftpcloudfs.conf). Check the example file included in the package.
 
 SUPPORT
 =======
