@@ -2,6 +2,7 @@
 __author__ = "Chmouel Boudjnah <chmouel@chmouel.com>"
 import sys
 import socket
+from ConfigParser import RawConfigParser
 import logging
 from logging.handlers import SysLogHandler
 
@@ -10,7 +11,8 @@ from pyftpdlib import ftpserver
 
 from server import RackspaceCloudAuthorizer, RackspaceCloudFilesFS, \
     get_abstracted_fs
-from constants import version, default_address, default_port
+from constants import version, default_address, default_port, \
+    default_config_file, default_banner
 from monkeypatching import MyDTPHandler
 
 
@@ -33,8 +35,10 @@ class Main(object):
         ftpserver.logline = lambda msg: log(logging.debug, msg)
         ftpserver.logerror = lambda msg: log(logging.error, msg)
 
-        if self.options.log_level is True:
+        if self.options.log_level:
             self.options.log_level = logging.DEBUG
+        else:
+            self.options.log_level = logging.INFO
 
         if self.options.syslog is True:
             logger = logging.getLogger()
@@ -53,92 +57,114 @@ class Main(object):
                                 format=log_format,
                                 level=self.options.log_level)
 
+    def parse_configuration(self, config_file=default_config_file):
+        ''' Parse Configuration File '''
+        config = RawConfigParser({'banner': default_banner,
+                                  'port': default_port,
+                                  'bind-address': default_address,
+                                  'auth-url': None,
+                                  'service-net': 'no',
+                                  'verbose': 'no',
+                                  'syslog': 'no',
+                                  'log-file': None,
+                                  'pid-file': None,
+                                  'uid': None,
+                                  'gid': None,
+                                 })
+        config.read(default_config_file)
+        if not config.has_section('ftpcloudfs'):
+            config.add_section('ftpcloudfs')
+
+        self.config = config
+
     def parse_arguments(self):
         ''' Parse Command Line Options '''
         parser = OptionParser(usage="%s [OPTIONS]....." % __package__)
         parser.add_option('-p', '--port',
                           type="int",
                           dest="port",
-                          default=default_port,
+                          default=self.config.get('ftpcloudfs', 'port'),
                           help="Port to bind the server default: %d." % \
                               (default_port))
 
         parser.add_option('-b', '--bind-address',
                           type="str",
                           dest="bind_address",
-                          default=default_address,
+                          default=self.config.get('ftpcloudfs', 'bind-address'),
                           help="Address to bind by default: %s." % \
                               (default_address))
 
         parser.add_option('-a', '--auth-url',
                           type="str",
                           dest="authurl",
-                          default=None,
+                          default=self.config.get('ftpcloudfs', 'auth-url'),
                           help="Auth URL for alternate providers" + \
-                              "(eg OpenStack)")
+                              "(eg OpenStack).")
 
         parser.add_option('-s', '--service-net',
                           action="store_true",
                           dest="servicenet",
-                          default=False,
+                          default=self.config.getboolean('ftpcloudfs', 'service-net'),
                           help="Connect via Rackspace ServiceNet network.")
 
         parser.add_option('-v', '--verbose',
                           action="store_true",
                           dest="log_level",
-                          default=logging.INFO,
+                          default=self.config.getboolean('ftpcloudfs', 'verbose'),
                           help="Be verbose on logging.")
 
         parser.add_option('-f', '--foreground',
                           action="store_true",
                           dest="foreground",
                           default=False,
-                          help="Do not attempt to daemonize but" + \
+                          help="Do not attempt to daemonize but " + \
                               "run in foreground.")
 
         parser.add_option('-l', '--log-file',
                           type="str",
                           dest="log_file",
-                          default=None,
-                          help="Log File: Default stdout when in foreground")
+                          default=self.config.get('ftpcloudfs', 'log-file'),
+                          help="Log File: Default stdout when in foreground.")
 
         parser.add_option('--syslog',
                           action="store_true",
                           dest="syslog",
-                          default=None,
+                          default=self.config.getboolean('ftpcloudfs', 'syslog'),
                           help="Enable logging to the system logger " + \
                               "(daemon facility).")
 
         parser.add_option('--pid-file',
                           type="str",
                           dest="pid_file",
-                          default=None,
+                          default=self.config.get('ftpcloudfs', 'pid-file'),
                           help="Pid file location when in daemon mode.")
 
         parser.add_option('--uid',
                           type="int",
                           dest="uid",
-                          default=None,
+                          default=self.config.get('ftpcloudfs', 'uid'),
                           help="UID to drop the privilige to " + \
-                              "when in daemon mode")
+                              "when in daemon mode.")
 
         parser.add_option('--gid',
                           type="int",
                           dest="gid",
-                          default=None,
+                          default=self.config.get('ftpcloudfs', 'gid'),
                           help="GID to drop the privilige to " + \
-                              "when in daemon mode")
+                              "when in daemon mode.")
 
         (options, _) = parser.parse_args()
         self.options = options
 
-    def run_server(self):
+    def setup_server(self):
         """Run the main ftp server loop"""
         ftp_handler = ftpserver.FTPHandler
         ftp_handler.dtp_handler = MyDTPHandler
 
-        ftp_handler.banner = 'Rackspace Cloud Files %s using %s' % \
-            (version, ftp_handler.banner)
+        banner = self.config.get('ftpcloudfs', 'banner').replace('%v', version)
+        banner = banner.replace('%f', ftpserver.__ver__)
+
+        ftp_handler.banner = banner
         ftp_handler.authorizer = RackspaceCloudAuthorizer()
         RackspaceCloudFilesFS.servicenet = self.options.servicenet
         RackspaceCloudFilesFS.authurl = self.options.authurl
@@ -154,10 +180,9 @@ class Main(object):
         ftpd = ftpserver.FTPServer((self.options.bind_address,
                                     self.options.port),
                                    ftp_handler)
+        return ftpd
 
-        ftpd.serve_forever()
-
-    def setup_daemon(self):
+    def setup_daemon(self, preserve=None):
         import daemon
         from utils import PidFile
         import tempfile
@@ -168,7 +193,7 @@ class Main(object):
             self.options.pid_file = "%s/ftpcloudfs.pid" % \
                 (tempfile.gettempdir())
 
-        #daemonContext.pidfile = PidFile(self.options.pid_file)
+        daemonContext.pidfile = PidFile(self.options.pid_file)
 
         if self.options.uid:
             daemonContext.uid = self.options.uid
@@ -176,18 +201,24 @@ class Main(object):
         if self.options.gid:
             daemonContext.gid = self.options.gid
 
+        if preserve:
+            daemonContext.files_preserve = preserve
+
         return daemonContext
 
     def main(self):
         """ Main entry point"""
+        self.parse_configuration()
         self.parse_arguments()
+
+        ftpd = self.setup_server()
 
         if self.options.foreground:
             self.setup_log()
-            self.run_server()
+            ftpd.serve_forever()
             return
 
-        daemonContext = self.setup_daemon()
+        daemonContext = self.setup_daemon([ftpd.socket.fileno(),])
         with daemonContext:
             self.setup_log()
-            self.run_server()
+            ftpd.serve_forever()
