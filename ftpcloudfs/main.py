@@ -3,7 +3,6 @@ __author__ = "Chmouel Boudjnah <chmouel@chmouel.com>"
 import sys
 import os
 import signal
-import multiprocessing
 import socket
 from ConfigParser import RawConfigParser
 import logging
