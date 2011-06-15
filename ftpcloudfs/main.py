@@ -1,6 +1,9 @@
 # -*- encoding: utf-8 -*-
 __author__ = "Chmouel Boudjnah <chmouel@chmouel.com>"
 import sys
+import os
+import signal
+import multiprocessing
 import socket
 from ConfigParser import RawConfigParser
 import logging
@@ -12,7 +15,7 @@ from pyftpdlib import ftpserver
 from server import RackspaceCloudAuthorizer, RackspaceCloudFilesFS, \
     get_abstracted_fs
 from constants import version, default_address, default_port, \
-    default_config_file, default_banner
+    default_config_file, default_banner, default_workers
 from monkeypatching import MyDTPHandler
 
 
@@ -22,18 +25,19 @@ class Main(object):
 
     def __init__(self):
         self.options = None
+        self._workers = []
 
     def setup_log(self):
         ''' Setup Logging '''
 
-        def log(log_type, msg):
+        def log(log_type, pid, msg):
             """
             Dummy function.
             """
-            log_type(u"%s: %s" % (__package__, msg))
-        ftpserver.log = lambda msg: log(logging.info, msg)
-        ftpserver.logline = lambda msg: log(logging.debug, msg)
-        ftpserver.logerror = lambda msg: log(logging.error, msg)
+            log_type(u"%s[%s]: %s" % (__package__, pid, msg))
+        ftpserver.log = lambda msg: log(logging.info, self.pid, msg)
+        ftpserver.logline = lambda msg: log(logging.debug, self.pid, msg)
+        ftpserver.logerror = lambda msg: log(logging.error, self.pid, msg)
 
         if self.options.log_level:
             self.options.log_level = logging.DEBUG
@@ -62,6 +66,7 @@ class Main(object):
         config = RawConfigParser({'banner': default_banner,
                                   'port': default_port,
                                   'bind-address': default_address,
+                                  'workers': default_workers,
                                   'auth-url': None,
                                   'service-net': 'no',
                                   'verbose': 'no',
@@ -93,6 +98,13 @@ class Main(object):
                           default=self.config.get('ftpcloudfs', 'bind-address'),
                           help="Address to bind by default: %s." % \
                               (default_address))
+
+        parser.add_option('--workers',
+                          type="int",
+                          dest="workers",
+                          default=self.config.get('ftpcloudfs', 'workers'),
+                          help="Number of workers to use default: %d." % \
+                              (default_workers))
 
         parser.add_option('-a', '--auth-url',
                           type="str",
@@ -206,6 +218,15 @@ class Main(object):
 
         return daemonContext
 
+    def signal_handler(self, signal, frame):
+        """ Catch signals and propagate them to child processes """
+        for pid in self._workers:
+            try:
+                os.kill(pid, signal)
+            except:
+                pass
+        self.old_signal_handler(signal, frame)
+
     def main(self):
         """ Main entry point"""
         self.parse_configuration()
@@ -220,5 +241,13 @@ class Main(object):
 
         daemonContext = self.setup_daemon([ftpd.socket.fileno(),])
         with daemonContext:
+            self.old_signal_handler = signal.signal(signal.SIGTERM, self.signal_handler)
+            self.pid = os.getpid()
+            for i in range(self.options.workers):
+                pid = os.fork()
+                if pid == 0:
+                    self.pid = os.getpid()
+                    break
+                self._workers.append(pid)
             self.setup_log()
             ftpd.serve_forever()
