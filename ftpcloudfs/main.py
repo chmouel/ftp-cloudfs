@@ -33,7 +33,7 @@ class Main(object):
             """
             Dummy function.
             """
-            log_type(u"%s[%s]: %s" % (__package__, pid, msg))
+            log_type("%s[%s]: %s" % (__package__, pid, msg))
         ftpserver.log = lambda msg: log(logging.info, self.pid, msg)
         ftpserver.logline = lambda msg: log(logging.debug, self.pid, msg)
         ftpserver.logerror = lambda msg: log(logging.error, self.pid, msg)
