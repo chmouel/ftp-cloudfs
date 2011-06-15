@@ -144,7 +144,8 @@ class ListDirCache(object):
     def _make_stat(self, last_modified=None, content_type="application/directory", count=1, bytes=0, **kwargs):
         '''Make a stat object from the parameters passed in from'''
         if last_modified:
-            mtime_tuple = time.strptime(last_modified, LAST_MODIFIED_FORMAT)
+            mtime_tuple = list(time.strptime(last_modified, LAST_MODIFIED_FORMAT))
+            mtime_tuple[8] = 0  # Use GMT
             mtime = time.mktime(mtime_tuple)
         else:
             mtime = time.time()

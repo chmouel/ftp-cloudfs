@@ -119,8 +119,12 @@ class CloudFilesFSTest(unittest.TestCase):
     def test_listdir_root(self):
         ''' list root directory '''
         self.cnx.chdir("/")
+        dt = abs(datetime.utcfromtimestamp(self.cnx.getmtime("/")) - datetime.utcnow())
+        self.assertTrue(dt.seconds < 60)
         ls = self.cnx.listdir(".")
         self.assertTrue('ftpcloudfs_testing' in ls)
+        dt = abs(datetime.utcfromtimestamp(self.cnx.getmtime("ftpcloudfs_testing")) - datetime.utcnow())
+        self.assertTrue(dt.seconds < 60)
         self.assertTrue('potato' not in ls)
         self.cnx.mkdir("potato")
         ls = self.cnx.listdir(".")
@@ -132,6 +136,8 @@ class CloudFilesFSTest(unittest.TestCase):
         ''' list directory '''
         content_string = "Hello Moto"
         self.create_file("testfile.txt", content_string)
+        dt = abs(datetime.utcfromtimestamp(self.cnx.getmtime("testfile.txt")) - datetime.utcnow())
+        self.assertTrue(dt.seconds < 60)
         self.assertEqual(self.cnx.listdir("."), ["testfile.txt"])
         self.cnx.remove("testfile.txt")
 
@@ -153,6 +159,8 @@ class CloudFilesFSTest(unittest.TestCase):
         self.cnx.remove("1.txt")
         self.cnx.remove("2.txt")
         self.assertEqual(self.cnx.listdir("."), ["potato"])
+        dt = abs(datetime.utcfromtimestamp(self.cnx.getmtime("potato")) - datetime.utcnow())
+        self.assertTrue(dt.seconds < 60)
         self.cnx.rmdir("potato")
         self.assertEqual(self.cnx.listdir("."), [])
 

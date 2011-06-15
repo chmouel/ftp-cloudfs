@@ -136,7 +136,8 @@ class FtpCloudFSTest(unittest.TestCase):
         self.assertEquals(self.cnx.retrlines('LIST', callback=lines.append), '226 Transfer complete.')
         self.assertEquals(len(lines), 1)
         line = lines[0]
-        self.assertTrue(line.startswith("-rw-r--r--   1 root     root           10 "+ datetime.now().strftime("%b %d %H:")))
+        expected = "-rw-r--r--   1 root     root           10 "+ datetime.utcnow().strftime("%b %d %H:")
+        self.assertTrue(line.startswith(expected), "line %r != expected %r" % (line, expected))
         self.assertTrue(line.endswith(" testfile.txt"))
         self.cnx.delete("testfile.txt")
 
@@ -162,7 +163,8 @@ class FtpCloudFSTest(unittest.TestCase):
         self.assertEquals(self.cnx.retrlines('LIST', callback=lines.append), '226 Transfer complete.')
         self.assertEquals(len(lines), 1)
         line = lines[0]
-        self.assertTrue(line.startswith("drwxr-xr-x   1 root     root            0 "+ datetime.now().strftime("%b %d %H:")))
+        expected = "drwxr-xr-x   1 root     root            0 "+ datetime.utcnow().strftime("%b %d %H:")
+        self.assertTrue(line.startswith(expected), "line %r != expected %r" % (line, expected))
         self.assertTrue(line.endswith(" potato"))
         self.cnx.rmd("potato")
         self.assertEqual(self.cnx.nlst(), [])
