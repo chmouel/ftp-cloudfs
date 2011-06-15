@@ -76,6 +76,7 @@ Usage: ftpcloudfs [OPTIONS].....
   -p PORT, --port=PORT  Port to bind the server default: 2021.
   -b BIND_ADDRESS, --bind-address=BIND_ADDRESS
                         Address to bind by default: 127.0.0.1.
+  --workers=WORKERS     Number of workers to use default: 1.
   -a AUTHURL, --auth-url=AUTHURL
                         Auth URL for alternate providers(eg OpenStack)
   -v, --verbose         Be verbose on logging.
