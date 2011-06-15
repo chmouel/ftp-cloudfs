@@ -228,6 +228,7 @@ class Main(object):
 
     def main(self):
         """ Main entry point"""
+        self.pid = os.getpid()
         self.parse_configuration()
         self.parse_arguments()
 
@@ -241,7 +242,6 @@ class Main(object):
         daemonContext = self.setup_daemon([ftpd.socket.fileno(),])
         with daemonContext:
             self.old_signal_handler = signal.signal(signal.SIGTERM, self.signal_handler)
-            self.pid = os.getpid()
             for i in range(self.options.workers):
                 pid = os.fork()
                 if pid == 0:
