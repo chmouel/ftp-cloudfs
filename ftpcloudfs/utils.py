@@ -9,6 +9,11 @@ class PidFile(object):
         self.path = path
         self.pidfile = None
 
+    def close(self):
+        pidfile = self.pidfile
+        self.pidfile = None
+        pidfile.close()
+
     def __enter__(self):
         self.pidfile = open(self.path, "a+")
         fcntl.flock(self.pidfile.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -20,8 +25,9 @@ class PidFile(object):
         return self.pidfile
 
     def __exit__(self, exc_type=None, exc_value=None, exc_tb=None):
-        self.pidfile.close()
-        os.remove(self.path)
+        if self.pidfile:
+            self.pidfile.close()
+            os.remove(self.path)
 
 
 #from django.utils

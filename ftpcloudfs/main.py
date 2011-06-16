@@ -217,8 +217,8 @@ class Main(object):
             self.options.pid_file = "%s/ftpcloudfs.pid" % \
                 (tempfile.gettempdir())
 
-        daemonContext.pidfile = PidFile(self.options.pid_file)
-
+        self.pidfile = PidFile(self.options.pid_file)
+        daemonContext.pidfile = self.pidfile
         if self.options.uid:
             daemonContext.uid = self.options.uid
 
@@ -260,6 +260,7 @@ class Main(object):
                 pid = os.fork()
                 if pid == 0:
                     self.pid = os.getpid()
+                    self.pidfile.close()
                     break
                 self._workers.append(pid)
             self.setup_log()
