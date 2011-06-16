@@ -7,6 +7,7 @@ import socket
 from ConfigParser import RawConfigParser
 import logging
 from logging.handlers import SysLogHandler
+import gc
 
 from optparse import OptionParser
 from pyftpdlib import ftpserver
@@ -17,6 +18,18 @@ from constants import version, default_address, default_port, \
     default_config_file, default_banner, default_workers
 from monkeypatching import MyDTPHandler
 
+def start_garbage_collector(interval=10):
+    """Starts the garbage collector at the interval in seconds. 0 means
+    disabled"""
+    def garbage_collect():
+        """
+        Run the garbage collector every interval seconds to make sure
+        sleeping daemons get cleaned properly
+        """
+        ftpserver.CallLater(interval, garbage_collect)
+        gc.collect()
+    if interval:
+        garbage_collect()
 
 class Main(object):
     """ FTPCloudFS: A FTP Proxy Interface to Rackspace Cloud Files or
@@ -239,6 +252,7 @@ class Main(object):
             ftpd.serve_forever()
             return
 
+        start_garbage_collector()
         daemonContext = self.setup_daemon([ftpd.socket.fileno(),])
         with daemonContext:
             self.old_signal_handler = signal.signal(signal.SIGTERM, self.signal_handler)
