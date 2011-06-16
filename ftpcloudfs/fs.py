@@ -19,11 +19,6 @@ import posixpath
 
 __all__ = ['CloudFilesFS']
 
-sysinfo = sys.version_info
-LAST_MODIFIED_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
-if sysinfo[0] <= 2 and sysinfo[1] <= 5:
-    LAST_MODIFIED_FORMAT = "%Y-%m-%dT%H:%M:%S"
-
 def cfwrapper(fn, *args, **kwargs):
     '''Run fn(*args, **kwargs) catching and translating any cloudfiles errors into IOSErrors'''
     try:
@@ -144,9 +139,14 @@ class ListDirCache(object):
     def _make_stat(self, last_modified=None, content_type="application/directory", count=1, bytes=0, **kwargs):
         '''Make a stat object from the parameters passed in from'''
         if last_modified:
-            mtime_tuple = list(time.strptime(last_modified, LAST_MODIFIED_FORMAT))
+            if "." in last_modified:
+                last_modified, microseconds = last_modified.rsplit(".", 1)
+                microseconds = float("0."+microseconds)
+            else:
+                microseconds = 0.0
+            mtime_tuple = list(time.strptime(last_modified, "%Y-%m-%dT%H:%M:%S"))
             mtime_tuple[8] = 0  # Use GMT
-            mtime = time.mktime(mtime_tuple)
+            mtime = time.mktime(mtime_tuple) + microseconds
         else:
             mtime = time.time()
         if content_type == "application/directory":
