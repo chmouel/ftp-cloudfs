@@ -1,3 +1,19 @@
+2011-06-XX UNRELEASED CHANGES
+   * 0.8
+	Lots of fixes and features after extensive load testing
+   - Bug fixes
+       - Fix cat file bug
+       - Fix exceptions on closing files crashing the daemon
+       - Fix excessive open files by running garbage collector periodically
+       - Fix time parsing (timezone error (times wrong) and floating point parsing)
+       - Fix crash on logging unicode strings
+       - Fix timeout problems under heavy load
+   - New features
+       - Daemon improvements: logging, pidfile, drop privileges, syslog, multiple workers
+       - Verbose switch
+       - Configuration file support
+   - Internal reorganisation to make re-usable and testable ftpcloudfs.fs interface
+
 2011-03-18 Chmouel Boudjnah  <chmouel.boudjnah@rackspace.co.uk>
    * 0.7
 	A lot of improvement and fixes from Nick Craig-Wood nick@craig-wood.com

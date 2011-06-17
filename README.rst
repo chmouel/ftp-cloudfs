@@ -142,7 +142,8 @@ Author
 
 Chmouel Boudjnah <chmouel@chmouel.com>
 
-Contributor
-===========
+Contributors
+============
 
 Nick Craig-Wood <nick@craig-wood.com>
+Juan J. Martinez <juan@memset.com>
