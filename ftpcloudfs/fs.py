@@ -16,6 +16,7 @@ import cloudfiles
 from chunkobject import ChunkObject
 from errors import IOSError
 import posixpath
+from constants import cloudfiles_api_timeout
 
 __all__ = ['CloudFilesFS']
 
