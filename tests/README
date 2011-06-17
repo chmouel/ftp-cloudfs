@@ -1,0 +1,11 @@
+To run the tests you'll need access to a Rackspace Cloud files account
+or an Openstack Swift server.
+
+Set these environment variables before running the tests
+
+  export RCLOUD_API_USER='user'
+  export RCLOUD_API_KEY='key'
+
+And if using Openstack
+
+  export RCLOUD_AUTH_URL='https://url.of.auth.server/v1.0'
