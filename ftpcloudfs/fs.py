@@ -193,10 +193,10 @@ class ListDirCache(object):
         self.flush()
         cache = {}
         if path == "":
-            self.cache = self.listdir_root(cache)
+            self.listdir_root(cache)
         else:
             container, obj = parse_fspath(path)
-            self.cache = self.listdir_container(cache, container, obj)
+            self.listdir_container(cache, container, obj)
         self.cache = cache
         self.path = path
         self.when = time.time()
