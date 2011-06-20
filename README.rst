@@ -4,7 +4,7 @@ FTP Interface to Rackspace Cloud Files and OpenStack Swift
 
 :Homepage:  http://blog.chmouel.com/2009/10/29/ftp-server-for-cloud-files/
 :Credits:   Copyright 2009--2011 Chmouel Boudjnah <chmouel@chmouel.com>
-:Licence:   BSD
+:Licence:   MIT
 
 
 DESCRIPTION
@@ -115,6 +115,8 @@ exceptions contain licensing information in them.
 
 .. _`MIT`: http://en.wikipedia.org/wiki/MIT_License
 
+  Copyright (C) 2009-2011 Chmouel Boudjnah <chmouel@chmouel.com>
+
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal
   in the Software without restriction, including without limitation the rights
@@ -145,5 +147,6 @@ Chmouel Boudjnah <chmouel@chmouel.com>
 Contributors
 ============
 
-Nick Craig-Wood <nick@craig-wood.com>
-Juan J. Martinez <juan@memset.com>
+- Nick Craig-Wood <nick@craig-wood.com>
+- Juan J. Martinez <juan@memset.com>
+

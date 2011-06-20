@@ -31,7 +31,7 @@ setup(name='ftp-cloudfs',
         'Programming Language :: Python',
         'Operating System :: OS Independent',
         'Environment :: No Input/Output (Daemon)',
-        'License :: OSI Approved :: BSD License',
+        'License :: OSI Approved :: MIT License',
         ],
       test_suite = "nose.collector",
       )
