@@ -348,6 +348,7 @@ class CloudFilesFS(object):
         else:
             logging.debug("Making container %r" % (container,))
             self.connection.create_container(container)
+        self._listdir_cache.flush()
 
     def listdir(self, path):
         '''List a directory, raise OSError on error'''
@@ -386,6 +387,7 @@ class CloudFilesFS(object):
         else:
             logging.debug("Removing container %r" % (container,))
             cfwrapper(self.connection.delete_container, container)
+        self._listdir_cache.flush()
 
     def remove(self, path):
         '''Remove a file, raise OSError on error'''
@@ -403,6 +405,7 @@ class CloudFilesFS(object):
         container = self._get_container(container)
         obj = cfwrapper(container.get_object, name)
         cfwrapper(container.delete_object, obj)
+        self._listdir_cache.flush()
         return not name
 
     def _rename_container(self, src_container_name, dst_container_name):
@@ -411,6 +414,7 @@ class CloudFilesFS(object):
         # Delete the old container first, raising error if not empty
         cfwrapper(self.connection.delete_container, src_container_name)
         cfwrapper(self.connection.create_container, dst_container_name)
+        self._listdir_cache.flush()
 
     def rename(self, src, dst):
         '''Rename a file/directory from src to dst, raise OSError on error'''
@@ -460,6 +464,7 @@ class CloudFilesFS(object):
         cfwrapper(src_obj.copy_to, dst_container_name, dst_path)
         # Delete dst
         src_container.delete_object(src_path)
+        self._listdir_cache.flush()
 
     def isfile(self, path):
         '''Is this path a file.  Shouldn't raise an error if not found like os.path.isfile'''
