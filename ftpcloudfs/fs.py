@@ -397,6 +397,9 @@ class CloudFilesFS(object):
         if not name:
             raise IOSError(EACCES, "Can't remove a container")
 
+        if self.isdir(path):
+            raise IOSError(EACCES, "Can't remove a directory (use rmdir instead)")
+
         container = self._get_container(container)
         obj = cfwrapper(container.get_object, name)
         cfwrapper(container.delete_object, obj)
