@@ -522,3 +522,8 @@ class CloudFilesFS(object):
     def validpath(self, path):
         '''Check whether the path belongs to user's home directory'''
         return True
+
+    def flush(self):
+        '''Flush caches'''
+        if self._listdir_cache:
+            self._listdir_cache.flush()

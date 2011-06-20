@@ -70,9 +70,3 @@ class RackspaceCloudAuthorizer(ftpserver.DummyAuthorizer):
 
     def get_msg_quit(self, username):
         return 'Goodbye %s' % username
-
-def get_abstracted_fs(root, cmd_channel):
-    '''Get an AbstractedFs for the user logged in on the cmd_channel'''
-    cffs = cmd_channel.authorizer.get_abstracted_fs(cmd_channel.username)
-    cffs.init_abstracted_fs(root, cmd_channel)
-    return cffs

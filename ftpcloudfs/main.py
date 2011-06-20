@@ -12,11 +12,10 @@ import gc
 from optparse import OptionParser
 from pyftpdlib import ftpserver
 
-from server import RackspaceCloudAuthorizer, RackspaceCloudFilesFS, \
-    get_abstracted_fs
+from server import RackspaceCloudFilesFS
 from constants import version, default_address, default_port, \
     default_config_file, default_banner, default_workers
-from monkeypatching import MyDTPHandler
+from monkeypatching import MyFTPHandler, MyDTPHandler
 
 def start_garbage_collector(interval=10):
     """Starts the garbage collector at the interval in seconds. 0 means
@@ -182,28 +181,22 @@ class Main(object):
 
     def setup_server(self):
         """Run the main ftp server loop"""
-        ftp_handler = ftpserver.FTPHandler
-        ftp_handler.dtp_handler = MyDTPHandler
-
         banner = self.config.get('ftpcloudfs', 'banner').replace('%v', version)
         banner = banner.replace('%f', ftpserver.__ver__)
 
-        ftp_handler.banner = banner
-        ftp_handler.authorizer = RackspaceCloudAuthorizer()
+        MyFTPHandler.banner = banner
         RackspaceCloudFilesFS.servicenet = self.options.servicenet
         RackspaceCloudFilesFS.authurl = self.options.authurl
 
-        ftp_handler.abstracted_fs = staticmethod(get_abstracted_fs)
-
         try:
-            ftp_handler.masquerade_address = \
+            MyFTPHandler.masquerade_address = \
                 socket.gethostbyname(self.options.bind_address)
         except socket.gaierror, (_, errmsg):
             sys.exit('Address error: %s' % errmsg)
 
         ftpd = ftpserver.FTPServer((self.options.bind_address,
                                     self.options.port),
-                                   ftp_handler)
+                                   MyFTPHandler)
         return ftpd
 
     def setup_daemon(self, preserve=None):
