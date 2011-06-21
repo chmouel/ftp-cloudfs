@@ -96,7 +96,7 @@ class Main(object):
 
     def parse_arguments(self):
         ''' Parse Command Line Options '''
-        parser = OptionParser(usage="%s [OPTIONS]....." % __package__)
+        parser = OptionParser(version="%prog " + version)
         parser.add_option('-p', '--port',
                           type="int",
                           dest="port",
