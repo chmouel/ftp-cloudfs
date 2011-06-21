@@ -129,7 +129,7 @@ class CloudFilesFD(object):
 
 class ListDirCache(object):
     '''
-    Cache for listdir.  Thistranslate_cloudfiles_error is to cache the very common case when we
+    Cache for listdir.  This is to cache the very common case when we
     call listdir and then immediately call stat() on all the objects.
     In the OS this would be cached in the VFS but we have to make our
     own caching here to avoid the stat calls each making a connection.
