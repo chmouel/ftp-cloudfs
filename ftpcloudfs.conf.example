@@ -41,4 +41,7 @@
 # GID to drop priviliges when in daemon mode.
 # gid = (empty)
 
+# Masquerade IP address in case your server is behind a firewall or NATed.
+# masquerade-firewall = (empty)
+
 # EOF

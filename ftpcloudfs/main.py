@@ -86,6 +86,7 @@ class Main(object):
                                   'pid-file': None,
                                   'uid': None,
                                   'gid': None,
+                                  'masquerade-firewall': None,
                                  })
         config.read(default_config_file)
         if not config.has_section('ftpcloudfs'):
@@ -95,7 +96,7 @@ class Main(object):
 
     def parse_arguments(self):
         ''' Parse Command Line Options '''
-        parser = OptionParser(usage="%s [OPTIONS]....." % __package__)
+        parser = OptionParser(version="%prog " + version)
         parser.add_option('-p', '--port',
                           type="int",
                           dest="port",
@@ -188,11 +189,12 @@ class Main(object):
         RackspaceCloudFilesFS.servicenet = self.options.servicenet
         RackspaceCloudFilesFS.authurl = self.options.authurl
 
-        try:
-            MyFTPHandler.masquerade_address = \
-                socket.gethostbyname(self.options.bind_address)
-        except socket.gaierror, (_, errmsg):
-            sys.exit('Address error: %s' % errmsg)
+        masquerade = self.config.get('ftpcloudfs', 'masquerade-firewall')
+        if masquerade:
+            try:
+                MyFTPHandler.masquerade_address = socket.gethostbyname(masquerade)
+            except socket.gaierror, (_, errmsg):
+                sys.exit('Masquerade address error: %s' % errmsg)
 
         ftpd = ftpserver.FTPServer((self.options.bind_address,
                                     self.options.port),
