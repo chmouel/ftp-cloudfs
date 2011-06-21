@@ -17,39 +17,47 @@ from chunkobject import ChunkObject
 from errors import IOSError
 import posixpath
 from constants import cloudfiles_api_timeout
+from functools import wraps
 
 __all__ = ['CloudFilesFS']
 
-def cfwrapper(fn, *args, **kwargs):
-    '''Run fn(*args, **kwargs) catching and translating any cloudfiles errors into IOSErrors'''
-    try:
-        return fn(*args, **kwargs)
-    except (cloudfiles.errors.NoSuchContainer,
-            cloudfiles.errors.NoSuchObject), e:
-        raise IOSError(ENOENT, 'Not found: %s' % e)
-    except cloudfiles.errors.ContainerNotEmpty, e:
-        raise IOSError(ENOTEMPTY, 'Directory not empty: %s')
-    except cloudfiles.errors.ResponseError, e:
-        logging.warning("Response error: %s" % e)
-        # FIXME make some attempt to raise different errors on e.status
-        raise IOSError(EPERM, 'Operation not permitted: %s' % e)
-    except (cloudfiles.errors.AuthenticationError,
-            cloudfiles.errors.AuthenticationFailed,
-            cloudfiles.errors.ContainerNotPublic), e:
-        logging.warning("Authentication error: %s: %s" % (e.__class__.__name__, e))
-        raise IOSError(EPERM, 'Operation not permitted: %s' % e)
-    # All the remaining cloudfiles errors.  There is no superclass
-    # otherwise we could have caught that!
-    except (cloudfiles.errors.CDNNotEnabled,
-            cloudfiles.errors.IncompleteSend,
-            cloudfiles.errors.InvalidContainerName,
-            cloudfiles.errors.InvalidMetaName,
-            cloudfiles.errors.InvalidMetaValue,
-            cloudfiles.errors.InvalidObjectName,
-            cloudfiles.errors.InvalidObjectSize,
-            cloudfiles.errors.InvalidUrl), e:
-        logging.warning("Unexpected cloudfiles error: %s" % e)
-        raise IOSError(EIO, 'Unexpected cloudfiles error')
+def translate_cloudfiles_error(fn):
+    """
+    Decorator to catch cloudfiles errors and translating them into IOSError.
+
+    Other exceptions are not caught.
+    """
+    @wraps(fn)
+    def wrapper(*args,**kwargs):
+        name = getattr(fn, "func_name", "unknown")
+        log = lambda msg: logging.warning("%s: %s" % (name, msg))
+        try:
+            return fn(*args, **kwargs)
+        except (cloudfiles.errors.NoSuchContainer,
+                cloudfiles.errors.NoSuchObject), e:
+            raise IOSError(ENOENT, 'Not found: %s' % e)
+        except cloudfiles.errors.ContainerNotEmpty, e:
+            raise IOSError(ENOTEMPTY, 'Directory not empty: %s' % e)
+        except cloudfiles.errors.ResponseError, e:
+            log("Response error: %s" % e)
+            # FIXME make some attempt to raise different errors on e.status
+            raise IOSError(EPERM, 'Operation not permitted: %s' % e)
+        except (cloudfiles.errors.AuthenticationError,
+                cloudfiles.errors.AuthenticationFailed,
+                cloudfiles.errors.ContainerNotPublic), e:
+            log("Authentication error: %s" % e)
+            raise IOSError(EPERM, 'Operation not permitted: %s' % e)
+        except (cloudfiles.errors.CDNNotEnabled,
+                cloudfiles.errors.IncompleteSend,
+                cloudfiles.errors.InvalidContainerName,
+                cloudfiles.errors.InvalidMetaName,
+                cloudfiles.errors.InvalidMetaValue,
+                cloudfiles.errors.InvalidObjectName,
+                cloudfiles.errors.InvalidObjectSize,
+                cloudfiles.errors.InvalidUrl), e:
+            log("Unexpected cloudfiles error: %s" % e)
+            raise IOSError(EIO, 'Unexpected cloudfiles error')
+    return wrapper
 
 def parse_fspath(path):
     '''Returns a (container, path) tuple. For shorter paths
@@ -82,7 +90,7 @@ class CloudFilesFD(object):
         self.container = self.cffs._get_container(self.container)
 
         if 'r' in self.mode:
-            self.obj = cfwrapper(self.container.get_object, self.name)
+            self.obj = self.container.get_object(self.name)
             logging.debug("read fd obj.name=%r obj.size=%r" % (self.obj.name, self.obj.size))
         else: #write
             self.obj = ChunkObject(self.container, obj)
@@ -121,7 +129,7 @@ class CloudFilesFD(object):
 
 class ListDirCache(object):
     '''
-    Cache for listdir.  This is to cache the very common case when we
+    Cache for listdir.  Thistranslate_cloudfiles_error is to cache the very common case when we
     call listdir and then immediately call stat() on all the objects.
     In the OS this would be cached in the VFS but we have to make our
     own caching here to avoid the stat calls each making a connection.
@@ -179,7 +187,7 @@ class ListDirCache(object):
     def listdir_root(self, cache):
         '''Fills cache with the list of containers'''
         logging.debug("listdir root")
-        objects = cfwrapper(self.cffs.connection.list_containers_info)
+        objects = self.cffs.connection.list_containers_info()
         for obj in objects:
             # {u'count': 0, u'bytes': 0, u'name': u'container1'},
             # Keep all names in utf-8, just like the filesystem
@@ -243,7 +251,7 @@ class ListDirCache(object):
             count = len(self.cache)
             stat_info = self._make_stat(count=count, bytes=bytes)
         return stat_info
-    
+
 class CloudFilesFS(object):
     '''Cloud Files File system emulation
 
@@ -251,6 +259,7 @@ class CloudFilesFS(object):
     of the same name.
     '''
 
+    @translate_cloudfiles_error
     def __init__(self, username, api_key, servicenet=False, authurl=None):
         '''
         Open the Cloudfiles connection
@@ -270,6 +279,7 @@ class CloudFilesFS(object):
         self._listdir_cache = ListDirCache(self)
         self._cwd = '/'
 
+    @translate_cloudfiles_error
     def authenticate(self, username, api_key):
         '''
         Authenticates and opens the connection
@@ -281,16 +291,17 @@ class CloudFilesFS(object):
         # compatibility with old python api versions
         if self.authurl:
             kwargs['authurl'] = self.authurl
-        self.connection = cfwrapper(cloudfiles.get_connection, username, api_key, timeout=30, **kwargs)
+        self.connection = cloudfiles.get_connection(username, api_key, timeout=30, **kwargs)
 
     def close(self):
         '''Dummy function which does nothing - no need to close'''
         pass
 
+    @translate_cloudfiles_error
     def _get_container(self, container):
         '''Gets the named container returning a container object, raising
         IOSError if not found'''
-        return cfwrapper(self.connection.get_container, container)
+        return self.connection.get_container(container)
 
     def isabs(self, path):
         """Test whether a path is absolute"""
@@ -306,6 +317,7 @@ class CloudFilesFS(object):
             path = posixpath.join(self.getcwd(), path)
         return self.normpath(path)
 
+    @translate_cloudfiles_error
     def open(self, path, mode):
         '''Open path with mode, raise IOError on error'''
         path = self.abspath(path)
@@ -333,6 +345,7 @@ class CloudFilesFS(object):
         '''Returns the current working directory'''
         return self._cwd
 
+    @translate_cloudfiles_error
     def mkdir(self, path):
         '''Make a directory, raise OSError on error'''
         path = self.abspath(path)
@@ -350,12 +363,14 @@ class CloudFilesFS(object):
             self.connection.create_container(container)
         self._listdir_cache.flush()
 
+    @translate_cloudfiles_error
     def listdir(self, path):
         '''List a directory, raise OSError on error'''
         path = self.abspath(path)
         logging.debug("listdir %r" % path)
         return self._listdir_cache.listdir(path)
 
+    @translate_cloudfiles_error
     def listdir_with_stat(self, path):
         '''Return the directory list of the path with stat objects for
         each, filling the cache in the process, as a list of tuples
@@ -364,6 +379,7 @@ class CloudFilesFS(object):
         logging.debug("listdir_with_stat %r" % path)
         return self._listdir_cache.listdir_with_stat(path)
 
+    @translate_cloudfiles_error
     def rmdir(self, path):
         '''Remove a directory, raise OSError on error'''
         path = self.abspath(path)
@@ -375,7 +391,7 @@ class CloudFilesFS(object):
             if self.isfile(path):
                 raise IOSError(ENOTDIR, "Not a directory")
             raise IOSError(ENOENT, 'No such file or directory')
-            
+
         if self.listdir(path):
             raise IOSError(ENOTEMPTY, "Directory not empty: '%s'" % path)
 
@@ -383,12 +399,13 @@ class CloudFilesFS(object):
 
         if obj:
             logging.debug("Removing directory %r in %r" % (obj, container))
-            cfwrapper(cnt.delete_object, obj)
+            cnt.delete_object(obj)
         else:
             logging.debug("Removing container %r" % (container,))
-            cfwrapper(self.connection.delete_container, container)
+            self.connection.delete_container(container)
         self._listdir_cache.flush()
 
+    @translate_cloudfiles_error
     def remove(self, path):
         '''Remove a file, raise OSError on error'''
         path = self.abspath(path)
@@ -403,19 +420,21 @@ class CloudFilesFS(object):
             raise IOSError(EACCES, "Can't remove a directory (use rmdir instead)")
 
         container = self._get_container(container)
-        obj = cfwrapper(container.get_object, name)
-        cfwrapper(container.delete_object, obj)
+        obj = container.get_object(name)
+        container.delete_object(obj)
         self._listdir_cache.flush()
         return not name
 
+    @translate_cloudfiles_error
     def _rename_container(self, src_container_name, dst_container_name):
         '''Rename src_container_name into dst_container_name'''
         logging.debug("rename container %r -> %r" % (src_container_name, dst_container_name))
         # Delete the old container first, raising error if not empty
-        cfwrapper(self.connection.delete_container, src_container_name)
-        cfwrapper(self.connection.create_container, dst_container_name)
+        self.connection.delete_container(src_container_name)
+        self.connection.create_container(dst_container_name)
         self._listdir_cache.flush()
 
+    @translate_cloudfiles_error
     def rename(self, src, dst):
         '''Rename a file/directory from src to dst, raise OSError on error'''
         src = self.abspath(src)
@@ -459,9 +478,9 @@ class CloudFilesFS(object):
         # Do the rename of the file/dir
         src_container = self._get_container(src_container_name)
         dst_container = self._get_container(dst_container_name)
-        src_obj = cfwrapper(src_container.get_object, src_path)
+        src_obj = src_container.get_object(src_path)
         # Copy src -> dst
-        cfwrapper(src_obj.copy_to, dst_container_name, dst_path)
+        src_obj.copy_to(dst_container_name, dst_path)
         # Delete dst
         src_container.delete_object(src_path)
         self._listdir_cache.flush()
@@ -510,6 +529,7 @@ class CloudFilesFS(object):
         except EnvironmentError:
             return False
 
+    @translate_cloudfiles_error
     def stat(self, path):
         '''Return os.stat_result object for path, raise OSError on error'''
         path = self.abspath(path)
