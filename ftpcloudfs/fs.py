@@ -317,6 +317,15 @@ class CloudFilesFS(object):
             path = posixpath.join(self.getcwd(), path)
         return self.normpath(path)
 
+    def mkstemp(self, suffix='', prefix='', dir=None, mode='wb'):
+        """A wrapper around tempfile.mkstemp creating a file with a unique
+        name.  Unlike mkstemp it returns an object with a file-like
+        interface.
+        """
+        e = "mkstemp suffix=%r prefix=%r, dir=%r mode=%r - not implemented" % (suffix, prefix, dir, mode)
+        logging.debug(e)
+        raise IOSError(EPERM, 'Operation not permitted: %s' % e)
+
     @translate_cloudfiles_error
     def open(self, path, mode):
         '''Open path with mode, raise IOError on error'''
@@ -485,6 +494,12 @@ class CloudFilesFS(object):
         src_container.delete_object(src_path)
         self._listdir_cache.flush()
 
+    def chmod(self, path, mode):
+        '''Change file/directory mode'''
+        e = "chmod %03o %r - not implemented" % (mode, path)
+        logging.debug(e)
+        raise IOSError(EPERM, 'Operation not permitted: %s' % e)
+
     def isfile(self, path):
         '''Is this path a file.  Shouldn't raise an error if not found like os.path.isfile'''
         logging.debug("isfile %r" % path)
@@ -547,3 +562,30 @@ class CloudFilesFS(object):
         '''Flush caches'''
         if self._listdir_cache:
             self._listdir_cache.flush()
+
+    def get_user_by_uid(self, uid):
+        '''
+        Return the username associated with user id.
+        If this can't be determined return raw uid instead.
+        '''
+        return self.username
+
+    def get_group_by_gid(self, gid):
+        '''
+        Return the groupname associated with group id.
+        If this can't be determined return raw gid instead.
+        On Windows just return "group".
+        '''
+        return self.username
+
+    def readlink(self, path):
+        '''
+        Return a string representing the path to which a
+        symbolic link points.
+
+        We never return that we have a symlink in stat, so this should
+        never be called
+        '''
+        e = "readlink %r - not implemented" % path
+        logging.debug(e)
+        raise IOSError(EPERM, 'Operation not permitted: %s' % e)
