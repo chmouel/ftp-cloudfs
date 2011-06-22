@@ -17,6 +17,15 @@ from constants import version, default_address, default_port, \
     default_config_file, default_banner, default_workers
 from monkeypatching import MyFTPHandler, MyDTPHandler
 
+def remove_unsupported_ftp_commands():
+    """Remove ftp commands we don't / can't support"""
+    unsupported = (
+        'SITE CHMOD',
+    )
+    for cmd in unsupported:
+        if cmd in ftpserver.proto_cmds:
+            del ftpserver.proto_cmds[cmd]
+
 def start_garbage_collector(interval=10):
     """Starts the garbage collector at the interval in seconds. 0 means
     disabled"""
@@ -239,6 +248,7 @@ class Main(object):
         self.pid = os.getpid()
         self.parse_configuration()
         self.parse_arguments()
+        remove_unsupported_ftp_commands()
 
         ftpd = self.setup_server()
 
