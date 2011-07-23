@@ -187,7 +187,13 @@ class ListDirCache(object):
     def listdir_root(self, cache):
         '''Fills cache with the list of containers'''
         logging.debug("listdir root")
-        objects = self.cffs.connection.list_containers_info()
+        try:
+            objects = self.cffs.connection.list_containers_info()
+        except ResponseError:
+            # when implementing contaniners' ACL, getting the containers
+            # list can raise a ResponseError, but still access to the
+            # the containers we have permissions to access to
+            return
         for obj in objects:
             # {u'count': 0, u'bytes': 0, u'name': u'container1'},
             # Keep all names in utf-8, just like the filesystem
