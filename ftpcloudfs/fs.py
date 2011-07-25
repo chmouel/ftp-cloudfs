@@ -189,7 +189,7 @@ class ListDirCache(object):
         logging.debug("listdir root")
         try:
             objects = self.cffs.connection.list_containers_info()
-        except ResponseError:
+        except cloudfiles.errors.ResponseError:
             # when implementing contaniners' ACL, getting the containers
             # list can raise a ResponseError, but still access to the
             # the containers we have permissions to access to
