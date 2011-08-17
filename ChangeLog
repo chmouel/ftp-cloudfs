@@ -1,3 +1,14 @@
+2011-08-17 Nick Craig-Wood <http://www.craig-wood.com/nick>
+   * 0.9
+	Mostly bug fixes
+   - Bug fixes
+       - Fix licence inconsistency
+       - Improve cache management to avoid inconsistencies between workers
+       - Don't allow DELE on directories
+       - Fix masquerade option
+       - Fix user and group
+       - Fix allowing access to a container even if the root is inaccessible
+
 2011-06-17 Nick Craig-Wood <http://www.craig-wood.com/nick>
    * 0.8
 	Lots of fixes and features after extensive load testing
