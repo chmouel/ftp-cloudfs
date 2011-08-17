@@ -187,7 +187,13 @@ class ListDirCache(object):
     def listdir_root(self, cache):
         '''Fills cache with the list of containers'''
         logging.debug("listdir root")
-        objects = self.cffs.connection.list_containers_info()
+        try:
+            objects = self.cffs.connection.list_containers_info()
+        except cloudfiles.errors.ResponseError:
+            # when implementing contaniners' ACL, getting the containers
+            # list can raise a ResponseError, but still access to the
+            # the containers we have permissions to access to
+            return
         for obj in objects:
             # {u'count': 0, u'bytes': 0, u'name': u'container1'},
             # Keep all names in utf-8, just like the filesystem
@@ -244,7 +250,18 @@ class ListDirCache(object):
                 stat_info = self.cache[leaf]
             except KeyError:
                 logging.debug("Didn't find %r in directory listing" % leaf)
-                raise IOSError(ENOENT, 'No such file or directory %s' % leaf)
+                # it can be a container and the user doesn't have
+                # permissions to list the root
+                if directory == '/' and leaf:
+                    try:
+                        container = self.cffs.connection.get_container(leaf)
+                    except cloudfiles.errors.ResponseError:
+                        raise IOSError(ENOENT, 'No such file or directory %s' % leaf)
+
+                    logging.debug("Accessing %r container without root listing" % leaf)
+                    stat_info = self._make_stat(count=container.object_count, bytes=container.size_used)
+                else:
+                    raise IOSError(ENOENT, 'No such file or directory %s' % leaf)
         else:
             # Root directory size is sum of containers, count is containers
             bytes = sum(stat_info.st_size for stat_info in self.cache.values())
