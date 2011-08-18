@@ -12,7 +12,7 @@ def read(fname):
 
 setup(name='ftp-cloudfs',
       version=version,
-      download_url="https://github.com/chmouel/ftp-cloudfs/zipball/%s" % (version),
+      download_url="http://pypi.python.org/packages/source/f/ftp-cloudfs/ftp-cloudfs-%s.tar.gz" % (version),
       description='FTP interface to Rackspace Cloud Files and OpenStack Swift',
       author='Chmouel Boudjnah',
       author_email='chmouel.boudjnah@rackspace.co.uk',
