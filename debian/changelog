@@ -1,3 +1,9 @@
+ftp-cloudfs (0.6.0-1) stable; urgency=low
+
+  * Rebuild for Squeeze
+
+ -- Stanislav Bogatyrev <realloc@realloc.spb.ru>  Sun, 25 Sep 2011 16:28:00 +0400
+
 ftp-cloudfs (0.6.0) maverick; urgency=low
 
   * Upload for maverick.
