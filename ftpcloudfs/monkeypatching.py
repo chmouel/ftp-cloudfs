@@ -57,5 +57,5 @@ class MyFTPHandler(ftpserver.FTPHandler):
             self.respond('550 %s.' % why)
         else:
             msg = md5_checksum.upper()
-            self.respond("251 %s %s" % (line, msg))
+            self.respond('251 "%s" %s' % (line.replace('"', '""'), msg))
 
