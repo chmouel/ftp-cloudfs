@@ -606,3 +606,22 @@ class CloudFilesFS(object):
         e = "readlink %r - not implemented" % path
         logging.debug(e)
         raise IOSError(EPERM, 'Operation not permitted: %s' % e)
+
+    @translate_cloudfiles_error
+    def md5(self, path):
+        '''Return the object MD5 for path, raise OSError on error'''
+        path = self.abspath(path)
+        logging.debug("md5 %r" % path)
+        container, name = parse_fspath(path)
+
+        if not name:
+            raise IOSError(EACCES, "Can't return the MD5 of a container")
+
+        if self.isdir(path):
+            # this is only 100% accurate for virtual directories
+            raise IOSError(EACCES, "Can't return the MD5 of a directory")
+
+        container = self._get_container(container)
+        obj = container.get_object(name)
+        return obj.etag
+
