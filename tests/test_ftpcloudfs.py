@@ -349,6 +349,15 @@ class FtpCloudFSTest(unittest.TestCase):
 
         self.assertEqual(self.cnx.nlst(), [])
 
+    def test_md5(self):
+        ''' MD5 extension'''
+        self.create_file("testfile.txt", "Hello Moto")
+        response = self.cnx.sendcmd("MD5 /ftpcloudfs_testing/testfile.txt")
+        self.cnx.delete("testfile.txt")
+        self.assertEqual(response, '251 "/ftpcloudfs_testing/testfile.txt" 0D933AE488FD55CC6BDEAFFFBAABF0C4')
+        self.assertRaises(ftplib.error_perm, self.cnx.sendcmd, "MD5 /ftpcloudfs_testing")
+        self.assertRaises(ftplib.error_perm, self.cnx.sendcmd, "MD5 /")
+
     def tearDown(self):
         # Delete eveything from the container using the API
         fails = self.container.list_objects()

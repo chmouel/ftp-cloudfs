@@ -343,6 +343,18 @@ class CloudFilesFSTest(unittest.TestCase):
 
         self.assertEqual(self.cnx.listdir("."), [])
 
+    def test_md5(self):
+        obj1 = self.container.create_object("test1.txt")
+        obj1.content_type = "text/plain"
+        obj1.write("Hello Moto")
+        self.assertEquals(self.cnx.md5("test1.txt"),"0d933ae488fd55cc6bdeafffbaabf0c4")
+        self.cnx.remove("test1.txt")
+        self.assertRaises(EnvironmentError, self.cnx.md5, "/")
+        self.assertRaises(EnvironmentError, self.cnx.md5, "/ftpcloudfs_testing")
+        self.cnx.mkdir("/ftpcloudfs_testing/sausage")
+        self.assertRaises(EnvironmentError, self.cnx.md5, "/ftpcloudfs_testing/sausage")
+        self.cnx.rmdir("/ftpcloudfs_testing/sausage")
+
     def tearDown(self):
         # Delete eveything from the container using the API
         fails = self.container.list_objects()
