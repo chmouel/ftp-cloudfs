@@ -4,15 +4,6 @@ from pyftpdlib import ftpserver
 from ftpcloudfs.utils import smart_str
 from server import RackspaceCloudAuthorizer
 
-# add the MD5 command, FTP extension according to IETF Draft:
-# http://tools.ietf.org/html/draft-twine-ftpmd5-00
-ftpserver.proto_cmds.update({
-    'MD5': dict(perm=None,
-                auth=True,
-                arg=True,
-                help='Syntax: MD5 <SP> file-name (get MD5 of file)')
-    })
-
 class MyDTPHandler(ftpserver.DTPHandler):
     def send(self, data):
         data=smart_str(data)

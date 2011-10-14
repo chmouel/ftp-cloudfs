@@ -17,14 +17,22 @@ from constants import version, default_address, default_port, \
     default_config_file, default_banner, default_workers
 from monkeypatching import MyFTPHandler, MyDTPHandler
 
-def remove_unsupported_ftp_commands():
-    """Remove ftp commands we don't / can't support"""
+def modify_supported_ftp_commands():
+    """Remove the FTP commands we don't / can't support, and add the extensions"""
     unsupported = (
         'SITE CHMOD',
     )
     for cmd in unsupported:
         if cmd in ftpserver.proto_cmds:
             del ftpserver.proto_cmds[cmd]
+    # add the MD5 command, FTP extension according to IETF Draft:
+    # http://tools.ietf.org/html/draft-twine-ftpmd5-00
+    ftpserver.proto_cmds.update({
+        'MD5': dict(perm=None,
+                    auth=True,
+                    arg=True,
+                    help='Syntax: MD5 <SP> file-name (get MD5 of file)')
+        })
 
 def start_garbage_collector(interval=10):
     """Starts the garbage collector at the interval in seconds. 0 means
@@ -248,7 +256,7 @@ class Main(object):
         self.pid = os.getpid()
         self.parse_configuration()
         self.parse_arguments()
-        remove_unsupported_ftp_commands()
+        modify_supported_ftp_commands()
 
         ftpd = self.setup_server()
 
