@@ -95,6 +95,7 @@ class Main(object):
                                   'port': default_port,
                                   'bind-address': default_address,
                                   'workers': default_workers,
+                                  'max-cons-per-ip': '0',
                                   'auth-url': None,
                                   'service-net': 'no',
                                   'verbose': 'no',
@@ -212,6 +213,13 @@ class Main(object):
                 MyFTPHandler.masquerade_address = socket.gethostbyname(masquerade)
             except socket.gaierror, (_, errmsg):
                 sys.exit('Masquerade address error: %s' % errmsg)
+
+        try:
+            max_cons_per_ip = int(self.config.get('ftpcloudfs', 'max-cons-per-ip'))
+        except ValueError, errmsg:
+            sys.exit('Max connections per IP error: %s' % errmsg)
+
+        ftpserver.FTPServer.max_cons_per_ip = max_cons_per_ip
 
         ftpd = ftpserver.FTPServer((self.options.bind_address,
                                     self.options.port),

@@ -17,6 +17,10 @@
 # cores and the expected load.
 # workers = 1
 
+# Maximum number of client connections per IP
+# default is 0 (no limit)
+# max-cons-per-ip = 0
+
 # Auth URL for alternate providers (eg OpenStack)
 # auth-url = (empty)
 
@@ -35,7 +39,7 @@
 # Pid file location when in daemon mode.
 # pid-file = (empty)
 
-# UID to drop priviliges when in daemon mode.
+# UID to drop privileges when in daemon mode.
 # uid = (empty)
 
 # GID to drop priviliges when in daemon mode.
