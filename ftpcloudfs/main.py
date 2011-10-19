@@ -273,6 +273,7 @@ class Main(object):
         ftpd = self.setup_server()
 
         if self.options.foreground:
+            MyFTPHandler.shared_ip_map = None
             self.setup_log()
             ftpd.serve_forever()
             return
@@ -284,6 +285,7 @@ class Main(object):
 
             self.shm_manager = Manager()
             MyFTPHandler.shared_ip_map = self.shm_manager.dict()
+            MyFTPHandler.shared_lock = self.shm_manager.Lock()
 
             for i in range(self.options.workers):
                 pid = os.fork()
