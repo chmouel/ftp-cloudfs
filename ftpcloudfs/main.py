@@ -16,6 +16,7 @@ from server import RackspaceCloudFilesFS
 from constants import version, default_address, default_port, \
     default_config_file, default_banner, default_workers
 from monkeypatching import MyFTPHandler, MyDTPHandler
+from multiprocessing import Manager
 
 def modify_supported_ftp_commands():
     """Remove the FTP commands we don't / can't support, and add the extensions"""
@@ -257,6 +258,9 @@ class Main(object):
                 os.kill(pid, signal)
             except:
                 pass
+
+        if self.shm_manager:
+            self.shm_manager.shutdown()
         self.old_signal_handler(signal, frame)
 
     def main(self):
@@ -277,11 +281,16 @@ class Main(object):
         daemonContext = self.setup_daemon([ftpd.socket.fileno(),])
         with daemonContext:
             self.old_signal_handler = signal.signal(signal.SIGTERM, self.signal_handler)
+
+            self.shm_manager = Manager()
+            MyFTPHandler.shared_ip_map = self.shm_manager.dict()
+
             for i in range(self.options.workers):
                 pid = os.fork()
                 if pid == 0:
                     self.pid = os.getpid()
                     self.pidfile.close()
+                    self.shm_manager = None
                     break
                 self._workers.append(pid)
             self.setup_log()

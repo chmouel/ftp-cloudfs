@@ -3,6 +3,7 @@ import asyncore
 from pyftpdlib import ftpserver
 from ftpcloudfs.utils import smart_str
 from server import RackspaceCloudAuthorizer
+import logging
 
 class MyDTPHandler(ftpserver.DTPHandler):
     def send(self, data):
@@ -49,4 +50,29 @@ class MyFTPHandler(ftpserver.FTPHandler):
         else:
             msg = md5_checksum.upper()
             self.respond('251 "%s" %s' % (line.replace('"', '""'), msg))
+
+    def handle(self):
+        """Track the ip and check max cons per ip (if needed)"""
+        if self.server.max_cons_per_ip and self.remote_ip:
+            count = self.shared_ip_map.get(self.remote_ip, 0)
+            self.shared_ip_map[self.remote_ip] = count + 1
+            logging.debug("connection track: %s -> %s" % (self.remote_ip, count+1))
+
+            if self.shared_ip_map[self.remote_ip] > self.server.max_cons_per_ip:
+                self.handle_max_cons_per_ip()
+                return
+            logging.debug("connected, shared ip map: %s" % self.shared_ip_map)
+
+        super(MyFTPHandler, self).handle()
+
+    def close(self):
+        """Remove the ip from the shared map before calling close"""
+        if self.remote_ip in self.shared_ip_map:
+            self.shared_ip_map[self.remote_ip] -= 1
+            if self.shared_ip_map[self.remote_ip] <= 0:
+                del self.shared_ip_map[self.remote_ip]
+
+            logging.debug("disconnected, shared ip map: %s" % self.shared_ip_map)
+
+        super(MyFTPHandler, self).close()
 
