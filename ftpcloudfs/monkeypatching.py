@@ -50,10 +50,3 @@ class MyFTPHandler(ftpserver.FTPHandler):
             msg = md5_checksum.upper()
             self.respond('251 "%s" %s' % (line.replace('"', '""'), msg))
 
-    def handle_max_cons_per_ip(self):
-        """Too many clients are connected from the same IP"""
-        msg = "Too many connections from this IP %s" % self.addr[0]
-        self.log(msg)
-        self.respond('421 %s.' % msg)
-        self.close_when_done()
-
