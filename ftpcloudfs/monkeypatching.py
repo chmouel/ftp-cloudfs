@@ -53,7 +53,7 @@ class MyFTPHandler(ftpserver.FTPHandler):
 
     def handle(self):
         """Track the ip and check max cons per ip (if needed)"""
-        if self.server.max_cons_per_ip and self.remote_ip and self.shared_ip_map:
+        if self.server.max_cons_per_ip and self.remote_ip and self.shared_ip_map != None:
             self.shared_lock.acquire()
             count = self.shared_ip_map.get(self.remote_ip, 0)
             self.shared_ip_map[self.remote_ip] = count + 1
@@ -70,7 +70,7 @@ class MyFTPHandler(ftpserver.FTPHandler):
 
     def close(self):
         """Remove the ip from the shared map before calling close"""
-        if self.server.max_cons_per_ip and self.remote_ip and self.shared_ip_map:
+        if self.server.max_cons_per_ip and self.remote_ip and self.shared_ip_map != None:
             if self.remote_ip in self.shared_ip_map:
                 self.shared_lock.acquire()
                 self.shared_ip_map[self.remote_ip] -= 1
