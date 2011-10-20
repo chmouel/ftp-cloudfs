@@ -70,7 +70,7 @@ class MyFTPHandler(ftpserver.FTPHandler):
 
     def close(self):
         """Remove the ip from the shared map before calling close"""
-        if self.server.max_cons_per_ip and self.remote_ip and self.shared_ip_map != None:
+        if not self._closed and self.server.max_cons_per_ip and self.shared_ip_map != None:
             if self.remote_ip in self.shared_ip_map:
                 self.shared_lock.acquire()
                 self.shared_ip_map[self.remote_ip] -= 1
