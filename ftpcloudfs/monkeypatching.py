@@ -24,6 +24,8 @@ class MyDTPHandler(ftpserver.DTPHandler):
         super(MyDTPHandler, self).close()
 
 class MyFTPHandler(ftpserver.FTPHandler):
+    # don't kick off client in long time transactions
+    timeout = 0
     dtp_handler = MyDTPHandler
     authorizer = RackspaceCloudAuthorizer()
 
