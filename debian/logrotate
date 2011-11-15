@@ -1,0 +1,13 @@
+/var/log/ftp-cloudfs/ftp-cloudfs.log
+{
+	rotate 365
+	daily
+	dateext
+	missingok
+	notifempty
+	compress
+	create 0640 daemon daemon
+	postrotate
+		invoke-rc.d python-ftp-cloudfs restart >/dev/null 2>&1 || true
+	endscript
+}
