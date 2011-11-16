@@ -1,8 +1,8 @@
 #!/bin/sh
 
 if [ "$1" = "configure" ];then
+    mkdir -m 0750 -p /var/log/ftp-cloudfs
     chown daemon: /var/log/ftp-cloudfs
-    chmod 0755 /var/log/ftp-cloudfs
 fi
 
 # Automatically added by dh_pysupport
