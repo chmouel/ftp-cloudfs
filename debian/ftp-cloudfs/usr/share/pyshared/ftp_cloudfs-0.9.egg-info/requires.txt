@@ -1,3 +1,0 @@
-pyftpdlib
-python-cloudfiles
-python-daemon
