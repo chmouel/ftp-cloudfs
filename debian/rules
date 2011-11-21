@@ -1,16 +1,21 @@
 #!/usr/bin/make -f
+# -*- makefile -*-
+# Sample debian/rules that uses debhelper.
+# This file was originally written by Joey Hess and Craig Small.
+# As a special exception, when this file is copied by dh-make into a
+# dh-make output file, you may use that output file without restriction.
+# This special exception was added by Craig Small in version 0.37 of dh-make.
 
-DEB_PYTHON_SYSTEM=pysupport
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
 
-include /usr/share/cdbs/1/class/makefile-vars.mk
-include /usr/share/cdbs/1/rules/buildcore.mk
-include /usr/share/cdbs/1/rules/debhelper.mk
-include /usr/share/cdbs/1/class/python-distutils.mk
 
-clean::
-	-find . -name \*pyc -exec rm -f {} \;
+# Do not modify postinst/postrm/prerm scripts.
+override_dh_installinit:
+	dh_installinit --noscripts
 
-binary-post-install/ftp-cloudfs::
-	-mkdir -p $(CURDIR)/debian/ftp-cloudfs/var/log/ftp-cloudfs
-	-chown -R daemon: $(CURDIR)/debian/ftp-cloudfs/var/log/ftp-cloudfs/
+# python2 usage
+WITH_PYTHON2 = $(shell test -f /usr/bin/dh_python2 && echo "--with python2")
 
+%:
+	dh $@ ${WITH_PYTHON2}

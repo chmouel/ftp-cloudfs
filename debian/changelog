@@ -1,42 +1,5 @@
-ftp-cloudfs (0.6.0-1) stable; urgency=low
+ftp-cloudfs (0.9-1) unstable; urgency=low
 
-  * Rebuild for Squeeze
+  * Initial release
 
- -- Stanislav Bogatyrev <realloc@realloc.spb.ru>  Sun, 25 Sep 2011 16:28:00 +0400
-
-ftp-cloudfs (0.6.0) maverick; urgency=low
-
-  * Upload for maverick.
-
- -- Chmouel Boudjnah <chmouel@chmouel.com>  Wed, 16 Feb 2011 16:17:21 +0000
-
-ftp-cloudfs (0.4-2) karmic; urgency=low
-
-  * Upload for karmic.
-
- -- Chmouel Boudjnah <chmouel@chmouel.com>  Tue, 08 Dec 2009 19:11:30 +0000
-
-ftp-cloudfs (0.4-1) unstable; urgency=low
-
-  * 0.4.
-
- -- Chmouel Boudjnah <chmouel@chmouel.com>  Mon, 02 Nov 2009 13:07:10 +0000
-
-ftp-cloudfs (0.3-1) unstable; urgency=low
-
-  * New version fixing write.
-
- -- Chmouel Boudjnah <chmouel@chmouel.com>  Thu, 29 Oct 2009 12:32:18 +0000
-
-ftp-cloudfs (0.2-1) unstable; urgency=low
-
-  * Increased version.
-
- -- Chmouel Boudjnah <chmouel@chmouel.com>  Fri, 02 Oct 2009 01:41:08 -0500
-
-ftp-cloudfs (0.1-1) unstable; urgency=low
-
-  * First packaged version.
-
- -- Chmouel Boudjnah <chmouel@chmouel.com>  Wed, 30 Sep 2009 17:16:11 -0500
-
+ -- Christophe Le Guern <c35sys@gmail.com>  Mon, 21 Nov 2011 10:59:38 +0100
