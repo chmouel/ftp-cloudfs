@@ -31,11 +31,11 @@ class ProxyConnection(Connection):
         super(ProxyConnection, self).__init__(*args, **kwargs)
 
     def make_request(self, method, path=[], data='', hdrs=None, parms=None):
-        headers = None
         if self.real_ip:
-            headers = { 'X-Forwarded-For': self.real_ip }
-            isinstance(hdrs, dict) and headers.update(hdrs)
-        return super(ProxyConnection, self).make_request(method, path, data, headers, parms)
+            if not hdrs:
+                hdrs = {}
+            hdrs['X-Forwarded-For'] = self.real_ip
+        return super(ProxyConnection, self).make_request(method, path, data, hdrs, parms)
 
 def translate_cloudfiles_error(fn):
     """
