@@ -1,8 +1,0 @@
-#
-# Change here the default binded address (0.0.0.0 for everything).
-#
-#BIND_ADDRESS=127.0.0.1
-#
-# Change here the default port
-#
-#BIND_PORT=2021

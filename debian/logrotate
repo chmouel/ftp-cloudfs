@@ -6,8 +6,8 @@
 	missingok
 	notifempty
 	compress
-	create 0640 daemon daemon
+	create 0640 ftpcloudfs ftpcloudfs
 	postrotate
-		invoke-rc.d python-ftp-cloudfs restart >/dev/null 2>&1 || true
+		invoke-rc.d ftp-cloudfs restart >/dev/null 2>&1 || true
 	endscript
 }

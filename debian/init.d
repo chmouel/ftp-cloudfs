@@ -1,56 +1,36 @@
-#! /bin/sh
+#!/bin/sh
 ### BEGIN INIT INFO
 # Provides:          ftp-cloudfs
-# Required-Start:    $remote_fs
-# Required-Stop:     $remote_fs
+# Required-Start:    $network $local_fs
+# Required-Stop:
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: FTP-Cloufs
-# Description:       A FTP interface to Rackspace Cloud Files.
+# Short-Description: ftp-cloudfs
+# Description:       FTP interface to Rackspace Cloud Files and OpenStack Object Storage.
 ### END INIT INFO
 
-# Author: Chmouel Boudjnah <chmouel.boudjnah@rackspace.co.uk>
+# Author: Christophe Le Guern <c35sys@gmail.com>
 
-# PATH should only include /usr/* if it runs after the mountnfs.sh script
+# PATH should only include /usr
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
-DESC="FTP Cloud-Files"
-NAME="ftp-cloudfs"
-DAEMON=/usr/bin/ftpcloudfs
-PIDFILE=/var/run/$NAME.pid
+DESC=ftp-cloudfs                # Introduce a short description here
+NAME=ftp-cloudfs                # Introduce the short server's name here
+CONFIGFILE=/etc/ftpcloudfs.conf # Configuration file
+DAEMON=/usr/bin/ftpcloudfs      # Introduce the server's location here
+LOGDIR=/var/log/${NAME}         # Logs directory
+LOGFILE=${LOGDIR}/${NAME}.log   # Log file
+DAEMON_ARGS="-l ${LOGFILE}"     # Arguments to run the daemon with
+PIDFILE=/var/run/${NAME}/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
-DAEMON_UID=1 #daemon UID
-DAEMON_GID=1 #daemon GID
-LOGDIR=/var/log/${NAME}
-LOGFILE=${LOGDIR}/${NAME}.log
 
-DAEMON_ARGS="-l ${LOGFILE} --pid-file=${PIDFILE} --uid=${DAEMON_UID} --gid=${DAEMON_GID}"
+# Exit if the package is not installed
+[ -x $DAEMON ] || exit 0
+
+# Exit if there is no configuration file
+if [ ! -f ${CONFIGFILE} ]; then echo "Missing Configuration file"; exit 0; fi
 
 # Read configuration variable file if it is present
 [ -r /etc/default/$NAME ] && . /etc/default/$NAME
-
-# Exit if the package is not installed
-[ -x "$DAEMON" ] || exit 0
-
-if [ -n "$BIND_ADDRESS" ];then
-    DAEMON_ARGS="$DAEMON_ARGS -b $BIND_ADDRESS"
-fi
-
-if [ -n "$BIND_PORT" ];then
-    DAEMON_ARGS="$DAEMON_ARGS -p $BIND_PORT"
-fi
-
-if [ ! -e ${LOGDIR} ]
-then
-    mkdir -p ${LOGDIR}
-    chown ${DAEMON_UID}:${DAEMON_GID} ${LOGDIR}
-fi
-
-if [ ! -e "${LOGFILE}" ]
-then
-	touch "${LOGFILE}"
-	chmod 640 "${LOGFILE}"
-	chown ${DAEMON_UID}:${DAEMON_GID} "${LOGFILE}"
-fi
 
 # Load the VERBOSE setting and other rcS variables
 . /lib/init/vars.sh
@@ -64,19 +44,21 @@ fi
 #
 do_start()
 {
+	# create PID file
+	touch ${PIDFILE}
+	chown ftpcloudfs:ftpcloudfs ${PIDFILE}
 	# Return
 	#   0 if daemon has been started
 	#   1 if daemon was already running
 	#   2 if daemon could not be started
-
-    touch $PIDFILE
-    chown $DAEMON_UID:$DAEMON_GID $PIDFILE    
-
-    start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON --test > /dev/null \
+	start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON --test > /dev/null \
 		|| return 1
 	start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON -- \
 		$DAEMON_ARGS \
 		|| return 2
+	# Add code here, if necessary, that waits for the process to be ready
+	# to handle requests from services started subsequently which depend
+	# on this one.  As a last resort, sleep for some time.
 }
 
 #
@@ -89,7 +71,7 @@ do_stop()
 	#   1 if daemon was already stopped
 	#   2 if daemon could not be stopped
 	#   other if a failure occurred
-	start-stop-daemon --quiet --stop --retry=TERM/30/KILL/5 --pidfile $PIDFILE --name $(basename $DAEMON)
+	start-stop-daemon --stop --quiet --retry=TERM/30/KILL/5 --pidfile $PIDFILE --name $(basename $DAEMON)
 	RETVAL="$?"
 	[ "$RETVAL" = 2 ] && return 2
 	# Wait for children to finish too if this is a daemon that forks
@@ -114,19 +96,19 @@ do_reload() {
 	# restarting (for example, when it is sent a SIGHUP),
 	# then implement that here.
 	#
-	start-stop-daemon --stop --signal 1 --quiet --pidfile $PIDFILE --name $NAME
+	start-stop-daemon --stop --signal 1 --quiet --pidfile $PIDFILE --name $(basename $DAEMON)
 	return 0
 }
 
 case "$1" in
   start)
-	[ "$VERBOSE" != no ] && log_daemon_msg "Starting $DESC" "$NAME"
-	do_start
-	case "$?" in
+    [ "$VERBOSE" != no ] && log_daemon_msg "Starting $DESC " "$NAME"
+    do_start
+    case "$?" in
 		0|1) [ "$VERBOSE" != no ] && log_end_msg 0 ;;
 		2) [ "$VERBOSE" != no ] && log_end_msg 1 ;;
 	esac
-	;;
+  ;;
   stop)
 	[ "$VERBOSE" != no ] && log_daemon_msg "Stopping $DESC" "$NAME"
 	do_stop

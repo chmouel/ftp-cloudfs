@@ -1,49 +1,13 @@
+ftp-cloudfs for Debian
+----------------------
 
-====================
-Debian/Ubuntu Readme
-====================
+A user (ftpcloudfs) and group (ftpcloudfs) are created to run the daemon.
 
-Note: tested on Ubuntu Oneiric
+By default, the package is configured to use logfiles, be aware of it.
+Default Log Location: /var/log/ftp-cloudfs/ftp-cloudfs.log
 
-Package Creation
-================
+Example configuration file: /usr/share/doc/ftp-cloudfs/examples/ftpcloudfs.conf.example
 
-- Install necessary packages
-  aptitude install -y git-core python-stdeb debhelper 
+A directory /var/run/ftp-cloudfs has been created for the PID file.
 
-- python-cloudfiles
-  cd /tmp
-  git clone http://github.com/rackspace/python-cloudfiles.git
-  cd python-cloudfiles
-  python setup.py --command-packages=stdeb.command bdist_deb
-  cp /tmp/python-cloudfiles/deb_dist/python-python-cloudfiles_1.7.9.3-1_all.deb /var/tmp/deb
-
-- python-pdflib
-  cd /tmp
-  wget http://pyftpdlib.googlecode.com/files/pyftpdlib-0.6.0.tar.gz
-  tar xzf pyftpdlib-0.6.0.tar.gz
-  cd pyftpdlib-0.6.0
-  python setup.py --command-packages=stdeb.command bdist_deb
-  cp deb_dist/python-pyftpdlib_0.6.0-1_all.deb /var/tmp/deb
-
-- python-ftp-cloudfs
-  cd /var/tmp/deb
-  dpkg -i python-python-cloudfiles_1.7.9.3-1_all.deb python-pyftpdlib_0.6.0-1_all.deb
-  aptitude install -y python-daemon
-  apt-file update
-  cd /tmp
-  git clone http://github.com/chmouel/ftp-cloudfs.git
-  cd ftp-cloudfs
-  python setup.py --command-packages=stdeb.command bdist_deb
-  cp deb_dist/python-ftp-cloudfs_0.9-1_all.deb /var/tmp/deb
-
-Package Installation
-====================
-
-  dpkg -i /var/tmp/deb/python-ftp-cloudfs_0.9-1_all.deb
-
-Package Log Files
-====================
-
-By default, debian package is configured to use logfiles, be aware of it.
-Note: Have a look at /etc/init.d/python-ftp-cloudfs
+ Christophe Le Guern <c35sys@gmail.com>  Mon, 21 Nov 2011 10:59:38 +0100
