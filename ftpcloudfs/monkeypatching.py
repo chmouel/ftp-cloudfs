@@ -40,6 +40,7 @@ class MyFTPHandler(ftpserver.FTPHandler):
         '''Flush the FS cache with every new FTP command'''
         if self.fs:
             self.fs.flush()
+            self.fs.connection.real_ip = self.remote_ip
         super(MyFTPHandler, self).process_command(cmd, *args, **kwargs)
 
     def ftp_MD5(self, path):
