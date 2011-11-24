@@ -13,6 +13,7 @@ import sys
 import logging
 from errno import EPERM, ENOENT, EACCES, ENOTEMPTY, ENOTDIR, EIO
 import cloudfiles
+from cloudfiles import Connection
 from chunkobject import ChunkObject
 from errors import IOSError
 import posixpath
@@ -20,6 +21,21 @@ from constants import cloudfiles_api_timeout
 from functools import wraps
 
 __all__ = ['CloudFilesFS']
+
+class ProxyConnection(Connection):
+    """
+    Add X-Forwarded-For header to all requests.
+    """
+    def __init__(self, *args, **kwargs):
+        self.real_ip = None
+        super(ProxyConnection, self).__init__(*args, **kwargs)
+
+    def make_request(self, method, path=[], data='', hdrs=None, parms=None):
+        if self.real_ip:
+            if not hdrs:
+                hdrs = {}
+            hdrs['X-Forwarded-For'] = self.real_ip
+        return super(ProxyConnection, self).make_request(method, path, data, hdrs, parms)
 
 def translate_cloudfiles_error(fn):
     """
@@ -308,7 +324,7 @@ class CloudFilesFS(object):
         # compatibility with old python api versions
         if self.authurl:
             kwargs['authurl'] = self.authurl
-        self.connection = cloudfiles.get_connection(username, api_key, timeout=30, **kwargs)
+        self.connection = ProxyConnection(username, api_key, timeout=30, **kwargs)
 
     def close(self):
         '''Dummy function which does nothing - no need to close'''
