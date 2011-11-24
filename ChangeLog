@@ -1,3 +1,14 @@
+2011-11-24 Juan J. Martinez <juan@memset.com>
+   * 0.10
+    Fixes, better packaging support and some new features
+   - Bug fixes
+	   - Fix pypi tarball
+	   - Fix debian packaging
+   - New features
+	   - MD5 FTP extension
+	   - Max connections per IP limit
+	   - X-Forwarded-For header support in API calls
+
 2011-08-17 Nick Craig-Wood <http://www.craig-wood.com/nick>
    * 0.9
 	Mostly bug fixes
