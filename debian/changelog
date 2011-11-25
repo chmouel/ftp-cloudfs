@@ -1,3 +1,21 @@
+ftp-cloudfs (0.10-1)  unstable; urgency=low
+
+  - Packages fixes
+   - fix README.source with $VERSION and fix a typo
+   - fix /var/run/ftp-cloudfs in init.d (it is in tmpfs)
+   - Modify changelog with 0.10 version
+
+  - Bug fixes
+   - Fix pypi tarball
+   - Fix debian packaging
+
+  - New features
+    - MD5 FTP extension
+    - Max connections per IP limit
+    - X-Forwarded-For header support in API calls
+
+ -- Christophe Le Guern <c35sys@gmail.com>  Fri, 25 Nov 2011 11:30:00 +0100
+
 ftp-cloudfs (0.9-1) unstable; urgency=low
 
   * Initial release

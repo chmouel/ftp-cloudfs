@@ -149,4 +149,5 @@ Contributors
 
 - Nick Craig-Wood <nick@craig-wood.com>
 - Juan J. Martinez <juan@memset.com>
+- Christophe Le Guern <c35sys@gmail.com>
 
