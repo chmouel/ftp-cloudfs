@@ -3,8 +3,10 @@ ftp-cloudfs for Debian
 
 Tested on Ubuntu Oneiric
 
+VERSION=0.10
+
 git clone https://github.com/chmouel/ftp-cloudfs.git
-mv ftp-cloudfs ftp-cloudfs-0.9
-tar czf ftp-cloudfs_0.9.orig.tar.gz sftpcloudfs-0.9/
-cd ftp-cloudfs-0.9
+mv ftp-cloudfs ftp-cloudfs-$VERSION
+tar czf ftp-cloudfs_$VERSION.orig.tar.gz ftp-cloudfs-$VERSION/
+cd ftp-cloudfs-$VERSION
 debuild -us -uc

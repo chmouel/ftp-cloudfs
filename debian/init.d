@@ -20,7 +20,8 @@ DAEMON=/usr/bin/ftpcloudfs      # Introduce the server's location here
 LOGDIR=/var/log/${NAME}         # Logs directory
 LOGFILE=${LOGDIR}/${NAME}.log   # Log file
 DAEMON_ARGS="-l ${LOGFILE}"     # Arguments to run the daemon with
-PIDFILE=/var/run/${NAME}/$NAME.pid
+PIDDIR=/var/run/${NAME}
+PIDFILE=${PIDDIR}/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
 
 # Exit if the package is not installed
@@ -44,6 +45,12 @@ if [ ! -f ${CONFIGFILE} ]; then echo "Missing Configuration file"; exit 0; fi
 #
 do_start()
 {
+	# create PID dir (/var/run/ is tmpfs)
+	if [ ! -d ${PIDDIR} ]
+	then
+	        mkdir -m 0700 -p ${PIDDIR}
+       		chown -R ftpcloudfs:ftpcloudfs ${PIDDIR}
+	fi
 	# create PID file
 	touch ${PIDFILE}
 	chown ftpcloudfs:ftpcloudfs ${PIDFILE}
