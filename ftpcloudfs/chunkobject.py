@@ -1,5 +1,6 @@
 from urllib  import quote
 from socket  import timeout
+from ssl     import SSLError
 
 from cloudfiles import consts
 from cloudfiles.storage_object import Object
@@ -37,7 +38,7 @@ class ChunkObject(Object):
             self.chunkable_http.send("%X\r\n" % len(chunk))
             self.chunkable_http.send(chunk)
             self.chunkable_http.send("\r\n")
-        except timeout, err:
+        except (timeout, SSLError), err:
             if response:
                 # pylint: disable-msg=E1101
                 buff = response.read()
@@ -47,7 +48,7 @@ class ChunkObject(Object):
         try:
             self.chunkable_http.send("0\r\n\r\n")
             #response = self.chunkable_http.getresponse()
-        except timeout, err:
+        except (timeout, SSLError), err:
             # if response:
             #     buff = response.read()
             raise err
