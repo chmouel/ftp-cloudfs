@@ -3,6 +3,7 @@ import asyncore
 from pyftpdlib import ftpserver
 from ftpcloudfs.utils import smart_str
 from server import RackspaceCloudAuthorizer
+from multiprocessing.managers import RemoteError
 import logging
 
 class MyDTPHandler(ftpserver.DTPHandler):
@@ -57,10 +58,13 @@ class MyFTPHandler(ftpserver.FTPHandler):
     def handle(self):
         """Track the ip and check max cons per ip (if needed)"""
         if self.server.max_cons_per_ip and self.remote_ip and self.shared_ip_map != None:
-            self.shared_lock.acquire()
-            count = self.shared_ip_map.get(self.remote_ip, 0)
-            self.shared_ip_map[self.remote_ip] = count + 1
-            self.shared_lock.release()
+            try:
+                self.shared_lock.acquire()
+                count = self.shared_ip_map.get(self.remote_ip, 0)
+                self.shared_ip_map[self.remote_ip] = count + 1
+                self.shared_lock.release()
+            except RemoteError, e:
+                logging.error("connection tracking failed: %s" % e)
 
             logging.debug("connection track: %s -> %s" % (self.remote_ip, count+1))
 
@@ -75,11 +79,14 @@ class MyFTPHandler(ftpserver.FTPHandler):
         """Remove the ip from the shared map before calling close"""
         if not self._closed and self.server.max_cons_per_ip and self.shared_ip_map != None:
             if self.remote_ip in self.shared_ip_map:
-                self.shared_lock.acquire()
-                self.shared_ip_map[self.remote_ip] -= 1
-                if self.shared_ip_map[self.remote_ip] <= 0:
-                    del self.shared_ip_map[self.remote_ip]
-                self.shared_lock.release()
+                try:
+                    self.shared_lock.acquire()
+                    self.shared_ip_map[self.remote_ip] -= 1
+                    if self.shared_ip_map[self.remote_ip] <= 0:
+                        del self.shared_ip_map[self.remote_ip]
+                    self.shared_lock.release()
+                except RemoteError, e:
+                    logging.error("connection tracking cleanup failed: %s" % e)
 
                 logging.debug("disconnected, shared ip map: %s" % self.shared_ip_map)
 
