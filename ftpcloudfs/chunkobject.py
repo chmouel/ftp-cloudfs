@@ -42,7 +42,7 @@ class ChunkObject(Object):
             if response:
                 # pylint: disable-msg=E1101
                 buff = response.read()
-            raise err
+            raise ResponseError(408, err.message)
 
     def finish_chunk(self):
         try:
@@ -51,7 +51,7 @@ class ChunkObject(Object):
         except (timeout, SSLError), err:
             # if response:
             #     buff = response.read()
-            raise err
+            raise ResponseError(408, err.message)
 
         response = self.chunkable_http.getresponse()
         buff = response.read()
