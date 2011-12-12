@@ -98,6 +98,7 @@ class CloudFilesFD(object):
         self.mode = mode
         self.closed = False
         self.total_size = 0
+        self.stream = None
 
         if not all([container, obj]):
             self.closed = True
@@ -126,17 +127,22 @@ class CloudFilesFD(object):
         self.obj.finish_chunk()
 
     def read(self, size=65536):
-        '''Read data from the object'''
+        '''Read data from the object.
+
+        We can use just one request because 'seek' is not supported.
+        
+        NB: It uses the size passed into the first call for all subsequent calls'''
+        if not self.stream:
+            self.stream = self.obj.stream(size)
+
         logging.debug("read size=%r, total_size=%r, obj.size=%r" % (size, self.total_size, self.obj.size))
-        readsize = size
-        if (self.total_size + size) > self.obj.size:
-            readsize = self.obj.size - self.total_size
-        if self.total_size >= self.obj.size:
+        try:
+            buff = self.stream.next()
+            self.total_size += len(buff)
+        except StopIteration:
             return ""
         else:
-            offset = self.total_size
-            self.total_size += size
-            return self.obj.read(size=readsize, offset=offset)
+            return buff
 
     def seek(self, *kargs, **kwargs):
         '''Seek in the object: FIXME doesn't work and raises an error'''
