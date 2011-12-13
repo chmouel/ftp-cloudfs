@@ -330,7 +330,7 @@ class CloudFilesFS(object):
         # compatibility with old python api versions
         if self.authurl:
             kwargs['authurl'] = self.authurl
-        self.connection = ProxyConnection(username, api_key, timeout=30, **kwargs)
+        self.connection = ProxyConnection(username, api_key, timeout=cloudfiles_api_timeout, **kwargs)
 
     def close(self):
         '''Dummy function which does nothing - no need to close'''

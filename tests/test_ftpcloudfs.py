@@ -7,7 +7,7 @@ import StringIO
 from datetime import datetime
 import cloudfiles
 
-from ftpcloudfs.constants import default_address, default_port
+from ftpcloudfs.constants import default_address, default_port, cloudfiles_api_timeout
 
 
 class FtpCloudFSTest(unittest.TestCase):
@@ -29,7 +29,7 @@ class FtpCloudFSTest(unittest.TestCase):
         self.cnx.login(self.username, self.api_key)
         self.cnx.mkd("/ftpcloudfs_testing")
         self.cnx.cwd("/ftpcloudfs_testing")
-        self.conn = cloudfiles.get_connection(self.username, self.api_key, authurl=self.auth_url)
+        self.conn = cloudfiles.get_connection(self.username, self.api_key, authurl=self.auth_url, timeout=cloudfiles_api_timeout)
         self.container = self.conn.get_container('ftpcloudfs_testing')
 
     def create_file(self, path, contents):
