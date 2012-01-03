@@ -1,3 +1,12 @@
+2012-01-03 Juan J. Martinez <juan@memset.com>
+   * 0.11
+    Fixes and performance improvements
+  - Bug fixes
+   - use cloudfiles_api_timeout
+   - performance improvements on downloads
+   - improved logging
+   - handle SSL errors
+
 2011-11-24 Juan J. Martinez <juan@memset.com>
    * 0.10
     Fixes, better packaging support and some new features
