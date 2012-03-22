@@ -6,6 +6,8 @@ ftp-cloudfs (0.11-1)  unstable; urgency=low
    - improved logging
    - handle SSL errors
 
+ -- Juan J. Martinez <jjm@usebox.net>  Tue, 3 Jan 2012 13:36:49 +0000
+
 ftp-cloudfs (0.10-1)  unstable; urgency=low
 
   - Packages fixes
