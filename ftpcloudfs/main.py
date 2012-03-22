@@ -96,6 +96,7 @@ class Main(object):
                                   'port': default_port,
                                   'bind-address': default_address,
                                   'workers': default_workers,
+                                  'memcache': None,
                                   'max-cons-per-ip': '0',
                                   'auth-url': None,
                                   'service-net': 'no',
@@ -136,6 +137,13 @@ class Main(object):
                           default=self.config.get('ftpcloudfs', 'workers'),
                           help="Number of workers to use default: %d." % \
                               (default_workers))
+
+        parser.add_option('--memcache',
+                          type="str",
+                          dest="memcache",
+                          action="append",
+                          default=self.config.get('ftpcloudfs', 'memcache'),
+                          help="Memcache server(s) to be used for cache (ip:port).")
 
         parser.add_option('-a', '--auth-url',
                           type="str",
@@ -207,6 +215,9 @@ class Main(object):
         MyFTPHandler.banner = banner
         RackspaceCloudFilesFS.servicenet = self.options.servicenet
         RackspaceCloudFilesFS.authurl = self.options.authurl
+        RackspaceCloudFilesFS.memcache_hosts = self.options.memcache
+        if self.options.workers > 1 and not self.options.memcache:
+            RackspaceCloudFilesFS.single_cache = False
 
         masquerade = self.config.get('ftpcloudfs', 'masquerade-firewall')
         if masquerade:
