@@ -138,11 +138,14 @@ class Main(object):
                           help="Number of workers to use default: %d." % \
                               (default_workers))
 
+        memcache = self.config.get('ftpcloudfs', 'memcache')
+        if memcache:
+            memcache = tuple(x.strip() for x in memcache.split(','))
         parser.add_option('--memcache',
                           type="str",
                           dest="memcache",
                           action="append",
-                          default=self.config.get('ftpcloudfs', 'memcache'),
+                          default=memcache,
                           help="Memcache server(s) to be used for cache (ip:port).")
 
         parser.add_option('-a', '--auth-url',
