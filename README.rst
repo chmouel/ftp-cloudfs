@@ -98,11 +98,11 @@ The defaults can be changed using a configuration file (by default in
 CACHE MANAGEMENT
 ================
 
-Both `Rackspace Cloud Files`_ or to `OpenStack Swift`_ are a object storages
+Both `Rackspace Cloud Files`_ and `OpenStack Swift`_ are a object storages
 and not real file systems. This proxy simulates enough file system functionality
 to be used over FTP, but it has a performance hit.
 
-To improve the performance we use a cache, that can be local or external (with
+To improve the performance a cache is used. It can be local or external (with
 Memcache). By default a local cache is used, unless one or more Memcache servers
 are configured.
 
