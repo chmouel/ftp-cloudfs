@@ -17,6 +17,10 @@
 # cores and the expected load.
 # workers = 1
 
+# Memcache server(s) for external cache (eg 127.0.0.1:11211)
+# Can be a comma-separated list.
+# memcache = (empty)
+
 # Maximum number of client connections per IP
 # default is 0 (no limit)
 # max-cons-per-ip = 0
