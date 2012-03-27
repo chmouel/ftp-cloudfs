@@ -1,3 +1,9 @@
+2012-03-27 Juan J. Martinez <juan@memset.com>
+   * 0.12
+    Small fixes and performance improvements
+  - New features
+    - Cache code revisited, including support for a shared cache with Memcache
+
 2012-01-03 Juan J. Martinez <juan@memset.com>
    * 0.11
     Fixes and performance improvements

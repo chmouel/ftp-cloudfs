@@ -1,3 +1,8 @@
+ftp-cloudfs (0.12-1)  unstable; urgency=low
+
+  - New features
+    - Cache code revisited, including support for a shared cache with Memcache
+
 ftp-cloudfs (0.11-1)  unstable; urgency=low
 
   - Bug fixes
