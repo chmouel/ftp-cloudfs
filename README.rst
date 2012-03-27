@@ -107,7 +107,7 @@ Memcache). By default a local cache is used, unless one or more Memcache servers
 are configured.
 
 If you're using just one worker the local cache will be fine, but if you're using
-several workers, adding an external cache is highly recommended.
+several workers, configuring an external cache is highly recommended.
 
 SUPPORT
 =======
