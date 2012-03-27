@@ -19,6 +19,11 @@ from errors import IOSError
 import posixpath
 from constants import cloudfiles_api_timeout
 from functools import wraps
+import memcache
+try:
+    from hashlib import md5
+except:
+    from md5 import md5
 
 __all__ = ['CloudFilesFS']
 
@@ -160,11 +165,26 @@ class ListDirCache(object):
     def __init__(self, cffs):
         self.cffs = cffs
         self.path = None
-        self.cache = None
+        self.cache = {}
         self.when = time.time()
+        self.memcache = None
+
+        if self.cffs.memcache_hosts:
+            logging.debug("connecting to memcache %r" % self.cffs.memcache_hosts)
+            self.memcache = memcache.Client(self.cffs.memcache_hosts)
+
+    def key(self, index):
+        '''Returns a key for a user distributed cache'''
+        logging.debug("cache key for %r" % [self.cffs.authurl, self.cffs.username, index])
+        if not hasattr(self, "_key_base"):
+            self._key_base = md5("%s%s" % (self.cffs.authurl, self.cffs.username)).hexdigest()
+        return "%s-%s" % (self._key_base, md5(index).hexdigest())
 
     def flush(self):
         '''Flush the listdir cache'''
+        if self.memcache and self.path is not None:
+            logging.debug("flushing memcache for %r" % self.path)
+            self.memcache.delete(self.key(self.path))
         self.cache = None
 
     def _make_stat(self, last_modified=None, content_type="application/directory", count=1, bytes=0, **kwargs):
@@ -227,12 +247,21 @@ class ListDirCache(object):
         path = path.rstrip("/")
         logging.debug("listdir %r" % path)
         self.flush()
-        cache = {}
-        if path == "":
-            self.listdir_root(cache)
-        else:
-            container, obj = parse_fspath(path)
-            self.listdir_container(cache, container, obj)
+        cache = None
+        if self.memcache:
+            cache = self.memcache.get(self.key(path))
+            if cache:
+                logging.debug("memcache hit %r" % self.key(path))
+        if not cache:
+            cache = {}
+            if path == "":
+                self.listdir_root(cache)
+            else:
+                container, obj = parse_fspath(path)
+                self.listdir_container(cache, container, obj)
+            if self.memcache:
+                self.memcache.set(self.key(path), cache, self.MAX_CACHE_TIME)
+                logging.debug("memcache stored %r" % self.key(path))
         self.cache = cache
         self.path = path
         self.when = time.time()
@@ -249,6 +278,13 @@ class ListDirCache(object):
 
     def valid(self, path):
         '''Check the cache is valid for the container and directory path'''
+        if self.memcache:
+            cache = self.memcache.get(self.key(path))
+            if cache:
+                logging.debug("memcache hit %r" % self.key(path))
+                self.cache = cache
+                self.path = path
+                return True
         if not self.cache:
             return False
         if self.path != path:
@@ -266,6 +302,7 @@ class ListDirCache(object):
         directory, leaf = posixpath.split(path)
         # Refresh the cache it if is old, or wrong
         if not self.valid(directory):
+            logging.debug("invalid cache for %r (path: %r)" % (directory, self.path))
             self.listdir(directory)
         if path != "":
             try:
@@ -297,6 +334,8 @@ class CloudFilesFS(object):
     All the methods on this class emulate os.* or os.path.* functions
     of the same name.
     '''
+    single_cache = True
+    memcache_hosts = None
 
     @translate_cloudfiles_error
     def __init__(self, username, api_key, servicenet=False, authurl=None):

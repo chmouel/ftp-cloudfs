@@ -31,6 +31,7 @@ REQUIREMENT
 - python-cloudfiles >= 1.3.0  - http://github.com/rackspace/python-cloudfiles
 - pyftpdlib >= 0.6.0 - http://code.google.com/p/pyftpdlib/
 - python-daemon >= 1.6 - http://pypi.python.org/pypi/python-daemon/
+- python-memcache >= 1.45 - http://www.tummy.com/Community/software/python-memcached/
 
 Operating Systems
 =================
@@ -58,6 +59,7 @@ which will install ftp-cloudfs with all the dependencies needed.
 On a Debian/Ubuntu the preferred way to install would be like this::
 
   apt-get -y install python-daemon python-stdeb
+  pypi-install python-memcache
   pypi-install python-cloudfiles
   pypi-install pyftpdlib
   pypi-install ftp-cloudfs
@@ -77,6 +79,7 @@ Usage: ftpcloudfs [OPTIONS].....
   -b BIND_ADDRESS, --bind-address=BIND_ADDRESS
                         Address to bind by default: 127.0.0.1.
   --workers=WORKERS     Number of workers to use default: 1.
+  --memcache=MEMCACHE   Memcache server(s) to be used for cache (ip:port).
   -a AUTHURL, --auth-url=AUTHURL
                         Auth URL for alternate providers(eg OpenStack)
   -v, --verbose         Be verbose on logging.
@@ -91,6 +94,20 @@ Usage: ftpcloudfs [OPTIONS].....
 
 The defaults can be changed using a configuration file (by default in
 /etc/ftpcloudfs.conf). Check the example file included in the package.
+
+CACHE MANAGEMENT
+================
+
+Both `Rackspace Cloud Files`_ and `OpenStack Swift`_ are a object storages
+and not real file systems. This proxy simulates enough file system functionality
+to be used over FTP, but it has a performance hit.
+
+To improve the performance a cache is used. It can be local or external (with
+Memcache). By default a local cache is used, unless one or more Memcache servers
+are configured.
+
+If you're using just one worker the local cache will be fine, but if you're using
+several workers, configuring an external cache is highly recommended.
 
 SUPPORT
 =======
