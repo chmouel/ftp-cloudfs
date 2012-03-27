@@ -140,7 +140,7 @@ class Main(object):
 
         memcache = self.config.get('ftpcloudfs', 'memcache')
         if memcache:
-            memcache = tuple(x.strip() for x in memcache.split(','))
+            memcache = [x.strip() for x in memcache.split(',')]
         parser.add_option('--memcache',
                           type="str",
                           dest="memcache",
