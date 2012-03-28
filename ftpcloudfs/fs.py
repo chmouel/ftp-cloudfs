@@ -246,7 +246,6 @@ class ListDirCache(object):
         '''Return the directory list of the path, filling the cache in the process'''
         path = path.rstrip("/")
         logging.debug("listdir %r" % path)
-        self.flush()
         cache = None
         if self.memcache:
             cache = self.memcache.get(self.key(path))
