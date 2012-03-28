@@ -1,3 +1,7 @@
+ftp-cloudfs (0.12.1-1)  unstable; urgency=low
+
+    - Minor fixes (README.rst and version number)
+
 ftp-cloudfs (0.12-1)  unstable; urgency=low
 
   - New features

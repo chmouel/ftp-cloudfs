@@ -1,3 +1,7 @@
+2012-03-28 Juan J. Martinez <juan@memset.com>
+   * 0.12.1
+    Minor fixes (README.rst and version number)
+
 2012-03-27 Juan J. Martinez <juan@memset.com>
    * 0.12
     Small fixes and performance improvements

@@ -59,7 +59,7 @@ which will install ftp-cloudfs with all the dependencies needed.
 On a Debian/Ubuntu the preferred way to install would be like this::
 
   apt-get -y install python-daemon python-stdeb
-  pypi-install python-memcache
+  pypi-install python-memcached
   pypi-install python-cloudfiles
   pypi-install pyftpdlib
   pypi-install ftp-cloudfs
