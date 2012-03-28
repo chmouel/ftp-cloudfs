@@ -1,4 +1,8 @@
 2012-03-28 Juan J. Martinez <juan@memset.com>
+   * 0.12.2
+    Minor fix (unrequired cache flush)
+
+2012-03-28 Juan J. Martinez <juan@memset.com>
    * 0.12.1
     Minor fixes (README.rst and version number)
 
