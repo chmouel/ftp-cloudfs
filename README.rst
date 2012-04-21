@@ -159,12 +159,13 @@ exceptions contain licensing information in them.
 Author
 ======
 
-Chmouel Boudjnah <chmouel@chmouel.com>
+- Chmouel Boudjnah <chmouel@chmouel.com>
+- Nick Craig-Wood <nick@craig-wood.com>
+- Juan J. Martinez <juan@memset.com>
+
 
 Contributors
 ============
 
-- Nick Craig-Wood <nick@craig-wood.com>
-- Juan J. Martinez <juan@memset.com>
 - Christophe Le Guern <c35sys@gmail.com>
 
