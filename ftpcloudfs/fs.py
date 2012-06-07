@@ -180,11 +180,16 @@ class ListDirCache(object):
             self._key_base = md5("%s%s" % (self.cffs.authurl, self.cffs.username)).hexdigest()
         return "%s-%s" % (self._key_base, md5(index).hexdigest())
 
-    def flush(self):
+    def flush(self, path=None):
         '''Flush the listdir cache'''
-        if self.memcache and self.path is not None:
-            logging.debug("flushing memcache for %r" % self.path)
-            self.memcache.delete(self.key(self.path))
+        logging.debug("cache flush, path: %s" % self.path)
+        if self.memcache:
+            if self.path is not None:
+                logging.debug("flushing memcache for %r" % self.path)
+                self.memcache.delete(self.key(self.path))
+            if path and self.path != path:
+                logging.debug("flushing memcache for %r" % path)
+                self.memcache.delete(self.key(path))
         self.cache = None
 
     def _make_stat(self, last_modified=None, content_type="application/directory", count=1, bytes=0, **kwargs):
@@ -244,16 +249,18 @@ class ListDirCache(object):
 
     def listdir(self, path):
         '''Return the directory list of the path, filling the cache in the process'''
-        path = path.rstrip("/")
+        path = path.rstrip("/") or "/"
         logging.debug("listdir %r" % path)
         cache = None
         if self.memcache:
             cache = self.memcache.get(self.key(path))
             if cache:
                 logging.debug("memcache hit %r" % self.key(path))
+            else:
+                logging.debug("memcache miss %r" % self.key(path))
         if not cache:
             cache = {}
-            if path == "":
+            if path == "/":
                 self.listdir_root(cache)
             else:
                 container, obj = parse_fspath(path)
@@ -296,14 +303,14 @@ class ListDirCache(object):
 
         Returns the information from the cache if possible
         '''
-        path = path.rstrip("/")
+        path = path.rstrip("/") or "/"
         logging.debug("stat path %r" % (path))
         directory, leaf = posixpath.split(path)
         # Refresh the cache it if is old, or wrong
         if not self.valid(directory):
             logging.debug("invalid cache for %r (path: %r)" % (directory, self.path))
             self.listdir(directory)
-        if path != "":
+        if path != "/":
             try:
                 stat_info = self.cache[leaf]
             except KeyError:
@@ -408,7 +415,7 @@ class CloudFilesFS(object):
         '''Open path with mode, raise IOError on error'''
         path = self.abspath(path)
         logging.debug("open %r mode %r" % (path, mode))
-        self._listdir_cache.flush()
+        self._listdir_cache.flush(posixpath.dirname(path))
         container, obj = parse_fspath(path)
         return CloudFilesFD(self, container, obj, mode)
 
@@ -436,18 +443,18 @@ class CloudFilesFS(object):
         '''Make a directory, raise OSError on error'''
         path = self.abspath(path)
         logging.debug("mkdir %r" % path)
-        self._listdir_cache.flush()
         container, obj = parse_fspath(path)
         if obj:
+            self._listdir_cache.flush(posixpath.dirname(path))
             logging.debug("Making directory %r in %r" % (obj, container))
             cnt = self._get_container(container)
             directory_obj = cnt.create_object(obj)
             directory_obj.content_type = "application/directory"
             directory_obj.write("")
         else:
+            self._listdir_cache.flush("/")
             logging.debug("Making container %r" % (container,))
             self.connection.create_container(container)
-        self._listdir_cache.flush()
 
     @translate_cloudfiles_error
     def listdir(self, path):
@@ -470,7 +477,6 @@ class CloudFilesFS(object):
         '''Remove a directory, raise OSError on error'''
         path = self.abspath(path)
         logging.debug("rmdir %r" % path)
-        self._listdir_cache.flush()
         container, obj = parse_fspath(path)
 
         if not self.isdir(path):
@@ -484,19 +490,19 @@ class CloudFilesFS(object):
         cnt = self._get_container(container)
 
         if obj:
+            self._listdir_cache.flush(posixpath.dirname(path))
             logging.debug("Removing directory %r in %r" % (obj, container))
             cnt.delete_object(obj)
         else:
+            self._listdir_cache.flush("/")
             logging.debug("Removing container %r" % (container,))
             self.connection.delete_container(container)
-        self._listdir_cache.flush()
 
     @translate_cloudfiles_error
     def remove(self, path):
         '''Remove a file, raise OSError on error'''
         path = self.abspath(path)
         logging.debug("remove %r" % path)
-        self._listdir_cache.flush()
         container, name = parse_fspath(path)
 
         if not name:
@@ -508,7 +514,7 @@ class CloudFilesFS(object):
         container = self._get_container(container)
         obj = container.get_object(name)
         container.delete_object(obj)
-        self._listdir_cache.flush()
+        self._listdir_cache.flush(posixpath.dirname(path))
         return not name
 
     @translate_cloudfiles_error
@@ -518,7 +524,7 @@ class CloudFilesFS(object):
         # Delete the old container first, raising error if not empty
         self.connection.delete_container(src_container_name)
         self.connection.create_container(dst_container_name)
-        self._listdir_cache.flush()
+        self._listdir_cache.flush("/")
 
     @translate_cloudfiles_error
     def rename(self, src, dst):
@@ -569,7 +575,8 @@ class CloudFilesFS(object):
         src_obj.copy_to(dst_container_name, dst_path)
         # Delete dst
         src_container.delete_object(src_path)
-        self._listdir_cache.flush()
+        self._listdir_cache.flush(posixpath.dirname(src))
+        self._listdir_cache.flush(posixpath.dirname(dst))
 
     def chmod(self, path, mode):
         '''Change file/directory mode'''
