@@ -5,9 +5,11 @@ import sys
 import ftplib
 import StringIO
 from datetime import datetime
+from time import sleep
 import cloudfiles
 
 from ftpcloudfs.constants import default_address, default_port, cloudfiles_api_timeout
+from ftpcloudfs.fs import ListDirCache
 
 
 class FtpCloudFSTest(unittest.TestCase):
@@ -347,6 +349,8 @@ class FtpCloudFSTest(unittest.TestCase):
         self.container.delete_object(obj3.name)
         self.container.delete_object(obj4.name)
 
+        sleep(ListDirCache.MAX_CACHE_TIME)
+
         self.assertEqual(self.cnx.nlst(), [])
 
     def test_md5(self):
@@ -360,11 +364,11 @@ class FtpCloudFSTest(unittest.TestCase):
 
     def tearDown(self):
         # Delete eveything from the container using the API
+        self.cnx.close()
         fails = self.container.list_objects()
         for obj in fails:
             self.container.delete_object(obj)
-        self.cnx.rmd("/ftpcloudfs_testing")
-        self.cnx.close()
+        self.conn.delete_container("ftpcloudfs_testing")
         self.assertEquals(fails, [], "The test failed to clean up after itself leaving these objects: %r" % fails)
 
 if __name__ == '__main__':
