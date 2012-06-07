@@ -1,3 +1,11 @@
+2012-06-07 Juan J. Martinez <juan@memset.com>
+   * 0.13
+    Shared cache bug fixes and improvements
+   - Bug fixes
+    - the cache failed to invalidate after write operations on the root directory
+	- improved cache invalidation
+	- tests were modified to run properly with a shared cache enabled server
+
 2012-03-28 Juan J. Martinez <juan@memset.com>
    * 0.12.2
     Minor fix (unrequired cache flush)

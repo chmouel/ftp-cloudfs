@@ -1,3 +1,7 @@
+ftp-cloudfs (0.13-1)  unstable; urgency=low
+
+    - Shared cache bug fixes and improvements
+
 ftp-cloudfs (0.12.2-1)  unstable; urgency=low
 
     - Minor fix (unrequired cache flush)
