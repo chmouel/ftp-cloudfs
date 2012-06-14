@@ -221,6 +221,22 @@ class ListDirCache(object):
         else:
             prefix = None
         objects = cnt.list_objects_info(prefix=prefix, delimiter="/")
+
+        # override 10000 objects limit with markers
+        nbobjects = len(objects)
+        while nbobjects >= 10000:
+            # get last object as a marker
+            lastobject = objects[-1]
+            lastobjectname = lastobject['name']
+            # get a new list with the marker
+            newobjects = cnt.list_objects_info(prefix=prefix, delimiter="/", marker=lastobjectname)
+            # get the new list lenght
+            nbobjects = len(newobjects)
+            logging.debug("number of objects after marker %s: %s" % (lastobjectname, nbobjects))
+            # add the new list to current list
+            objects = objects + newobjects                
+        logging.debug("total number of objects %s:" % len(objects))
+
         for obj in objects:
             # {u'bytes': 4820,  u'content_type': '...',  u'hash': u'...',  u'last_modified': u'2008-11-05T00:56:00.406565',  u'name': u'new_object'},
             if 'subdir' in obj:
