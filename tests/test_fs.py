@@ -28,6 +28,7 @@ class CloudFilesFSTest(unittest.TestCase):
             cls.auth_url = os.environ.get('RCLOUD_AUTH_URL')
             cls.cnx = CloudFilesFS(self.username, self.api_key, authurl=self.auth_url)
             cls.conn = cloudfiles.get_connection(self.username, self.api_key, authurl=self.auth_url)
+            cls.directconn = Connection(self.username, self.api_key, authurl=self.auth_url)
         self.cnx.mkdir("/ftpcloudfs_testing")
         self.cnx.chdir("/ftpcloudfs_testing")
         self.container = self.conn.get_container('ftpcloudfs_testing')
