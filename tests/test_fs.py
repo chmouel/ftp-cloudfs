@@ -7,6 +7,7 @@ import StringIO
 from datetime import datetime
 import cloudfiles
 from ftpcloudfs.fs import CloudFilesFS
+from cloudfiles.connection import Connection
 
 import logging
 #logging.getLogger().setLevel(logging.DEBUG)
@@ -140,6 +141,25 @@ class CloudFilesFSTest(unittest.TestCase):
         self.assertTrue(dt.seconds < 60)
         self.assertEqual(self.cnx.listdir("."), ["testfile.txt"])
         self.cnx.remove("testfile.txt")
+
+    def test_listdir_over_10000(self):
+        ''' list directory with more than 10000 objects'''
+        maxnbFiles = 10000
+        content_string = "."
+        nbFiles = 0
+        while nbFiles <= maxnbFiles:
+            container = self.directconn.create_container("ftpcloudfs_testing")
+            obj = container.create_object(str(nbFiles))
+            obj.content_type = "text/plain"
+            obj.write(".")
+            nbFiles = nbFiles + 1
+        dirCount = len(self.cnx.listdir("."))
+        self.assertEqual(dirCount, maxnbFiles + 1)
+        nbFiles = 0
+        while nbFiles <= maxnbFiles:
+            container.delete_object(str(nbFiles))
+            nbFiles = nbFiles + 1
+        self.assertEqual(self.cnx.listdir("."), [])
 
     def test_listdir_subdir(self):
         ''' list a sub directory'''
