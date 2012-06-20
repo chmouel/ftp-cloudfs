@@ -156,7 +156,7 @@ exceptions contain licensing information in them.
   be used in advertising or otherwise to promote the sale, use or other dealings
   in this Software without prior written authorisation from Rackspace US, Inc. 
 
-Author
+Authors
 ======
 
 - Chmouel Boudjnah <chmouel@chmouel.com>
