@@ -6,7 +6,7 @@ import ftplib
 import StringIO
 from datetime import datetime
 import cloudfiles
-from ftpcloudfs.fs import CloudFilesFS
+from ftpcloudfs.fs import CloudFilesFS, ListDirCache
 
 import logging
 #logging.getLogger().setLevel(logging.DEBUG)
@@ -362,6 +362,90 @@ class CloudFilesFSTest(unittest.TestCase):
             self.container.delete_object(obj)
         self.cnx.rmdir("/ftpcloudfs_testing")
         self.assertEquals(fails, [], "The test failed to clean up after itself leaving these objects: %r" % fails)
+
+
+class MockupContainer(object):
+    '''Mockup object to simulate a CF container.'''
+    def __init__(self, container, num_objects):
+        self.container = container
+        self.num_objects = num_objects
+
+    def list_objects_info(self, prefix=None, delimiter=None, marker=None, limit=10000):
+
+        start = 0
+        if marker:
+            while start <= self.num_objects:
+                if marker == 'object%s.txt' % start:
+                    break
+                start += 1
+
+        end = self.num_objects-start
+        if end == 0:
+            # marker not found, so it's ingored (behaviour in OpenStack
+            # Object Storage)
+            start = 0
+            end = self.num_objects
+        if end > limit:
+            end = limit
+
+        return [dict(bytes=1024, content_type='text/plain',
+                     hash='c644eacf6e9c21c7d2cca3ce8bb0ec13',
+                     last_modified='2012-06-20T00:00:00.000000',
+                     name='object%s.txt' % i) for i in xrange(start, start+end)]
+
+class MockupConnection(object):
+    '''Mockup object to simulate a CF connection.'''
+    def __init__(self, num_objects):
+        self.num_objects = num_objects
+
+    def list_containers_info(self):
+        return [dict(count=self.num_objects, bytes=1024*self.num_objects, name='container'),]
+
+    def get_container(self, container):
+        if container != 'container':
+            raise cloudfiles.errors.NoSuchContainer()
+        return MoclupContainer(container)
+
+class MockupCfFs(object):
+    '''Mockup object to simulate a CFFS.'''
+    memcache_hosts = None
+    auth_url = 'https://auth.service.fake/v1'
+    username = 'user'
+
+    def __init__(self, num_objects):
+        self.num_objects = num_objects
+        self.connection = MockupConnection(num_objects)
+
+    def _get_container(self, container):
+        return MockupContainer(container, self.num_objects)
+
+class ListDirTest(unittest.TestCase):
+    '''
+    CloudFilesFS cache Tests.
+
+    These tests use the Mockup* objects because some of the tests would require
+    creating/deleting too many objects to run the test over the real storage.
+    '''
+
+    def test_listdir(self):
+        """Test listdir, less than 10000 (limit) objects"""
+        lc = ListDirCache(MockupCfFs(100))
+
+        ld = lc.listdir('/')
+        self.assertEqual(len(ld), 1)
+        self.assertEqual(ld, ['container',])
+
+        ld = lc.listdir('/container')
+        self.assertEqual(len(ld), 100)
+        self.assertEqual(sorted(ld), sorted(['object%s.txt' % i for i in xrange(100)]))
+
+    def test_listdir_marker(self):
+        """Test listdir, more than 10000 (limit) objects"""
+        lc = ListDirCache(MockupCfFs(10100))
+
+        ld = lc.listdir('/container')
+        self.assertEqual(len(ld), 10100)
+        self.assertEqual(sorted(ld), sorted(['object%s.txt' % i for i in xrange(10100)]))
 
 if __name__ == '__main__':
     unittest.main()
