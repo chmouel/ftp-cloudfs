@@ -230,7 +230,7 @@ class ListDirCache(object):
             lastobjectname = lastobject['name']
             # get a new list with the marker
             newobjects = cnt.list_objects_info(prefix=prefix, delimiter="/", marker=lastobjectname)
-            # get the new list lenght
+            # get the new list length
             nbobjects = len(newobjects)
             logging.debug("number of objects after marker %s: %s" % (lastobjectname, nbobjects))
             # add the new list to current list
