@@ -1,3 +1,7 @@
+2012-06-22 Juan J. Martinez <juan@memset.com>
+  * 0.14
+   Support for directory listings with more than 10000 objects
+
 2012-06-07 Juan J. Martinez <juan@memset.com>
    * 0.13
     Shared cache bug fixes and improvements

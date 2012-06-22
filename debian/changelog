@@ -1,3 +1,7 @@
+ftp-cloudfs (0.14-1)  unstable; urgency=low
+
+    - Support for directory listings with more than 10000 objects
+
 ftp-cloudfs (0.13-1)  unstable; urgency=low
 
     - Shared cache bug fixes and improvements
