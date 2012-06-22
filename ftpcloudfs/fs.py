@@ -234,7 +234,7 @@ class ListDirCache(object):
             nbobjects = len(newobjects)
             logging.debug("number of objects after marker %s: %s" % (lastobjectname, nbobjects))
             # add the new list to current list
-            objects = objects + newobjects                
+            objects = objects + newobjects
         logging.debug("total number of objects %s:" % len(objects))
 
         for obj in objects:
