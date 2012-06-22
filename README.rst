@@ -157,7 +157,7 @@ exceptions contain licensing information in them.
   in this Software without prior written authorisation from Rackspace US, Inc. 
 
 Authors
-======
+=======
 
 - Chmouel Boudjnah <chmouel@chmouel.com>
 - Nick Craig-Wood <nick@craig-wood.com>
