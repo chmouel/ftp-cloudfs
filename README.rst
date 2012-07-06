@@ -161,7 +161,7 @@ Authors
 
 - Chmouel Boudjnah <chmouel@chmouel.com>
 - Nick Craig-Wood <nick@craig-wood.com>
-- Juan J. Martinez <juan@memset.com>
+- Juan J. Martinez <jjm@usebox.net>
 
 
 Contributors
