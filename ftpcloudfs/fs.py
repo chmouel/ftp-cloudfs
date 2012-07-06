@@ -12,6 +12,7 @@ import stat
 import sys
 import logging
 from errno import EPERM, ENOENT, EACCES, ENOTEMPTY, ENOTDIR, EIO
+from ssl import SSLError
 import cloudfiles
 from cloudfiles import Connection
 from chunkobject import ChunkObject
@@ -40,7 +41,15 @@ class ProxyConnection(Connection):
             if not hdrs:
                 hdrs = {}
             hdrs['X-Forwarded-For'] = self.real_ip
-        return super(ProxyConnection, self).make_request(method, path, data, hdrs, parms)
+
+        # SSLErrors are not caught by cloudfiles
+        retry = 5
+        try:
+            return super(ProxyConnection, self).make_request(method, path, data, hdrs, parms)
+        except SSLError, e:
+            retry -= 1
+            if retry < 0:
+                raise cloudfiles.errors.ResponseError(e)
 
 def translate_cloudfiles_error(fn):
     """
