@@ -49,6 +49,7 @@ class ProxyConnection(Connection):
                 return super(ProxyConnection, self).make_request(method, path, data, hdrs, parms)
             except SSLError, e:
                 retry -= 1
+                logging.debug("%s, retrying (%s)" % (e, retry))
                 if retry < 0:
                     raise cloudfiles.errors.ResponseError(e)
 
