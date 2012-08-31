@@ -26,6 +26,8 @@ class ChunkObject(Object):
             headers['Transfer-Encoding'] = 'chunked'
         headers['X-Auth-Token'] = self.container.conn.token
         headers['User-Agent'] = consts.user_agent
+        if self.container.conn.real_ip:
+            headers['X-Forwarded-For'] = self.container.conn.real_ip
         self.chunkable_http = self.container.conn.connection
         self.chunkable_http.putrequest('PUT', path)
         for key, value in headers.iteritems():
