@@ -1,4 +1,4 @@
-version = '0.14'
+version = '0.15'
 
 default_banner = "Rackspace Cloud Files %v using pyftpdlib %f ready."
 default_config_file = '/etc/ftpcloudfs.conf'

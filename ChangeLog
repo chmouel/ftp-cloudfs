@@ -1,4 +1,10 @@
 2012-06-22 Juan J. Martinez <juan@memset.com>
+  * 0.15
+  - Bug fixes
+   - Catch SSLErrors on Connection.make_request and retry
+   - Added X-Forwarded-For header to PUT requests
+
+2012-06-22 Juan J. Martinez <juan@memset.com>
   * 0.14
    Support for directory listings with more than 10000 objects
 
