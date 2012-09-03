@@ -600,7 +600,7 @@ class CloudFilesFS(object):
         src_obj = src_container.get_object(src_path)
         # Copy src -> dst
         src_obj.copy_to(dst_container_name, dst_path)
-        # Delete dst
+        # Delete src
         src_container.delete_object(src_path)
         self._listdir_cache.flush(posixpath.dirname(src))
         self._listdir_cache.flush(posixpath.dirname(dst))
