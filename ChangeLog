@@ -1,4 +1,8 @@
-2012-06-22 Juan J. Martinez <juan@memset.com>
+2012-09-04 Juan J. Martinez <juan@memset.com>
+  * 0.16
+  - Improved logging, including formatting, log in, log out and most important commands
+
+2012-08-31 Juan J. Martinez <juan@memset.com>
   * 0.15
   - Bug fixes
    - Catch SSLErrors on Connection.make_request and retry
