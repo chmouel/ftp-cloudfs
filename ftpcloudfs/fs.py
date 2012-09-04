@@ -62,7 +62,7 @@ def translate_cloudfiles_error(fn):
     @wraps(fn)
     def wrapper(*args,**kwargs):
         name = getattr(fn, "func_name", "unknown")
-        log = lambda msg: logging.warning("%s: %s" % (name, msg))
+        log = lambda msg: logging.warning("At %s: %s" % (name, msg))
         try:
             return fn(*args, **kwargs)
         except (cloudfiles.errors.NoSuchContainer,
@@ -118,7 +118,7 @@ class CloudFilesFD(object):
 
         if not all([container, obj]):
             self.closed = True
-            raise IOSError(EPERM, 'Container and object requred')
+            raise IOSError(EPERM, 'Container and object required')
 
         self.container = self.cffs._get_container(self.container)
 
@@ -146,7 +146,7 @@ class CloudFilesFD(object):
         '''Read data from the object.
 
         We can use just one request because 'seek' is not supported.
-        
+
         NB: It uses the size passed into the first call for all subsequent calls'''
         if not self.stream:
             self.stream = self.obj.stream(size)
@@ -512,7 +512,7 @@ class CloudFilesFS(object):
             raise IOSError(ENOENT, 'No such file or directory')
 
         if self.listdir(path):
-            raise IOSError(ENOTEMPTY, "Directory not empty: '%s'" % path)
+            raise IOSError(ENOTEMPTY, "Directory not empty: %s" % path)
 
         cnt = self._get_container(container)
 
@@ -572,7 +572,7 @@ class CloudFilesFS(object):
         # Check constraints for renaming a directory
         if self.isdir(src):
             if self.listdir(src):
-                raise IOSError(ENOTEMPTY, "Can't rename non-empty directory: '%s'" % src)
+                raise IOSError(ENOTEMPTY, "Can't rename non-empty directory: %s" % src)
             if self.isfile(dst):
                 raise IOSError(ENOTDIR, "Can't rename directory to file")
         # Check not renaming to itself
@@ -588,12 +588,10 @@ class CloudFilesFS(object):
             return self._rename_container(src_container_name, dst_container_name)
         # ...otherwise can't deal with root stuff
         if not src_container_name or not src_path or not dst_container_name or not dst_path:
-            logging.info("Can't rename %r -> %r" % (src, dst))
             raise IOSError(EACCES, "Can't rename to / from root")
         # Check destination directory exists
         if not self.isdir(posixpath.split(dst)[0]):
-            logging.info("Can't copy %r -> %r dst directory doesn't exist" % (src, dst))
-            raise IOSError(ENOENT, "Can't copy %r -> %r dst directory doesn't exist" % (src, dst))
+            raise IOSError(ENOENT, "Can't copy %r to %r, destination directory doesn't exist" % (src, dst))
         # Do the rename of the file/dir
         src_container = self._get_container(src_container_name)
         dst_container = self._get_container(dst_container_name)
