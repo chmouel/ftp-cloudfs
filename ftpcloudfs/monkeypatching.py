@@ -79,17 +79,17 @@ class MyFTPHandler(ftpserver.FTPHandler):
     def close(self):
         """Remove the ip from the shared map before calling close"""
         if not self._closed and self.server.max_cons_per_ip and self.shared_ip_map != None:
-            if self.remote_ip in self.shared_ip_map:
-                try:
-                    self.shared_lock.acquire()
+            try:
+                self.shared_lock.acquire()
+                if self.remote_ip in self.shared_ip_map:
                     self.shared_ip_map[self.remote_ip] -= 1
                     if self.shared_ip_map[self.remote_ip] <= 0:
                         del self.shared_ip_map[self.remote_ip]
-                    self.shared_lock.release()
-                except RemoteError, e:
-                    self.logerror("Connection tracking cleanup failed: %s" % e)
+                self.shared_lock.release()
+            except RemoteError, e:
+                self.logerror("Connection tracking cleanup failed: %s" % e)
 
-                self.logline("Disconnected, shared ip map: %s" % self.shared_ip_map)
+            self.logline("Disconnected, shared ip map: %s" % self.shared_ip_map)
 
         super(MyFTPHandler, self).close()
 
