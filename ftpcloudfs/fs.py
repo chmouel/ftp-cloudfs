@@ -173,16 +173,17 @@ class ListDirCache(object):
     own caching here to avoid the stat calls each making a connection.
     '''
     MAX_CACHE_TIME = 10         # seconds to cache the listdir for
+    memcache = None
+
     def __init__(self, cffs):
         self.cffs = cffs
         self.path = None
         self.cache = {}
         self.when = time.time()
-        self.memcache = None
 
-        if self.cffs.memcache_hosts:
+        if self.cffs.memcache_hosts and ListDirCache.memcache is None:
             logging.debug("connecting to memcache %r" % self.cffs.memcache_hosts)
-            self.memcache = memcache.Client(self.cffs.memcache_hosts)
+            ListDirCache.memcache = memcache.Client(self.cffs.memcache_hosts)
 
     def key(self, index):
         '''Returns a key for a user distributed cache'''
