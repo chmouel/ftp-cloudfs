@@ -1,3 +1,9 @@
+2012-09-07 Juan J. Martinez <juan@memset.com>
+  * 0.17
+  - Bug fixes from Maxim Mitroshin <mitroshin@selectel.org>
+   - Fixed a race condition when checking the max connections per IP
+   - More efficient shared cache by limiting the number of Memcache connections
+
 2012-09-04 Juan J. Martinez <juan@memset.com>
   * 0.16
   - Improved logging, including formatting, log in, log out and most important commands

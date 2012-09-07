@@ -1,3 +1,9 @@
+ftp-cloudfs (0.17-1)  unstable; urgency=low
+
+  - Bug fixes
+   - Fixed a race condition when checking the max connections per IP
+   - More efficient shared cache by limiting the number of Memcache connections
+
 ftp-cloudfs (0.16-1)  unstable; urgency=low
 
   - Improved logging, including formatting, log in, log out and most important commands
