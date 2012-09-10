@@ -51,7 +51,7 @@ class ProxyConnection(Connection):
                 retry -= 1
                 logging.debug("%s, retrying (%s)" % (e, retry))
                 if retry < 0:
-                    raise cloudfiles.errors.ResponseError(e)
+                    raise cloudfiles.errors.ResponseError(500, e)
 
 def translate_cloudfiles_error(fn):
     """
