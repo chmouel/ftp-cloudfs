@@ -1,7 +1,7 @@
 ftp-cloudfs (0.17.1-1)  unstable; urgency=low
 
   - Bug fixes, code cleaning
-   - when the retry code on SSLError fails, the wrong exception was raised making that
+   - when the retry code on SSLError fails, an exception was raised making that
      worker crash; thanks to Konstantin vz'One Enchant for the patch
 
 ftp-cloudfs (0.17-1)  unstable; urgency=low
