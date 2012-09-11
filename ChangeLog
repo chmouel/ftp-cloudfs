@@ -1,4 +1,10 @@
 2012-09-07 Juan J. Martinez <juan@memset.com>
+  * 0.17.1
+  - Bug fix, code cleaning
+   - when the retry code on SSLError fails, the wrong exception was raised making that
+     worker crash; thanks to Konstantin vz'One Enchant for the patch
+
+2012-09-07 Juan J. Martinez <juan@memset.com>
   * 0.17
   - Bug fixes from Maxim Mitroshin <mitroshin@selectel.org>
    - Fixed a race condition when checking the max connections per IP
