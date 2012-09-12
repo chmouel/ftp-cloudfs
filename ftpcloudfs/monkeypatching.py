@@ -63,6 +63,7 @@ class MyFTPHandler(ftpserver.FTPHandler):
                 self.shared_lock.acquire()
                 count = self.shared_ip_map.get(self.remote_ip, 0) + 1
                 self.shared_ip_map[self.remote_ip] = count
+                self.logline("Connected, shared ip map: %s" % self.shared_ip_map)
             except RemoteError, e:
                 self.logerror("Connection tracking failed: %s" % e)
             finally:
@@ -73,8 +74,6 @@ class MyFTPHandler(ftpserver.FTPHandler):
             if count > self.server.max_cons_per_ip:
                 self.handle_max_cons_per_ip()
                 return
-
-            self.logline("Connected, shared ip map: %s" % self.shared_ip_map)
 
         super(MyFTPHandler, self).handle()
 
@@ -87,12 +86,12 @@ class MyFTPHandler(ftpserver.FTPHandler):
                     self.shared_ip_map[self.remote_ip] -= 1
                     if self.shared_ip_map[self.remote_ip] <= 0:
                         del self.shared_ip_map[self.remote_ip]
+                self.logline("Disconnected, shared ip map: %s" % self.shared_ip_map)
             except RemoteError, e:
                 self.logerror("Connection tracking cleanup failed: %s" % e)
             finally:
                 self.shared_lock.release()
 
-            self.logline("Disconnected, shared ip map: %s" % self.shared_ip_map)
 
         super(MyFTPHandler, self).close()
 
