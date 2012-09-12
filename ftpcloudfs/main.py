@@ -236,11 +236,14 @@ class Main(object):
         except ValueError, errmsg:
             sys.exit('Max connections per IP error: %s' % errmsg)
 
-        ftpserver.FTPServer.max_cons_per_ip = max_cons_per_ip
-
         ftpd = ftpserver.FTPServer((self.options.bind_address,
                                     self.options.port),
                                    MyFTPHandler)
+
+        # set it to unlimited, we use our own checks with a shared dict
+        ftpd.max_cons_per_ip = 0
+        ftpd.handler.max_cons_per_ip = max_cons_per_ip
+
         return ftpd
 
     def setup_daemon(self, preserve=None):

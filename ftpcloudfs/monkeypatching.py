@@ -28,6 +28,7 @@ class MyFTPHandler(ftpserver.FTPHandler):
     timeout = 0
     dtp_handler = MyDTPHandler
     authorizer = RackspaceCloudAuthorizer()
+    max_cons_per_ip = 0
 
     @staticmethod
     def abstracted_fs(root, cmd_channel):
@@ -57,7 +58,7 @@ class MyFTPHandler(ftpserver.FTPHandler):
 
     def handle(self):
         """Track the ip and check max cons per ip (if needed)"""
-        if self.server.max_cons_per_ip and self.remote_ip and self.shared_ip_map != None:
+        if self.max_cons_per_ip and self.remote_ip and self.shared_ip_map != None:
             count = 0
             try:
                 self.shared_lock.acquire()
@@ -71,7 +72,7 @@ class MyFTPHandler(ftpserver.FTPHandler):
 
             self.logline("Connection track: %s -> %s" % (self.remote_ip, count))
 
-            if count > self.server.max_cons_per_ip:
+            if count > self.max_cons_per_ip:
                 self.handle_max_cons_per_ip()
                 return
 
@@ -79,7 +80,7 @@ class MyFTPHandler(ftpserver.FTPHandler):
 
     def close(self):
         """Remove the ip from the shared map before calling close"""
-        if not self._closed and self.server.max_cons_per_ip and self.shared_ip_map != None:
+        if not self._closed and self.max_cons_per_ip and self.shared_ip_map != None:
             try:
                 self.shared_lock.acquire()
                 if self.remote_ip in self.shared_ip_map:
