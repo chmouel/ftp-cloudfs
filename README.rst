@@ -119,10 +119,9 @@ tracker :
 
 https://github.com/chmouel/ftp-cloudfs/issues
 
-BUGS
-====
+There's additional information at :
 
-None known ;-)
+https://github.com/chmouel/ftp-cloudfs/wiki
 
 LICENSE
 =======
@@ -168,4 +167,6 @@ Contributors
 ============
 
 - Christophe Le Guern <c35sys@gmail.com>
+- Konstantin vz'One Enchant <sirkonst@gmail.com>
+- Maxim Mitroshin <mitroshin@selectel.org>
 
