@@ -1,3 +1,8 @@
+2012-09-12 Juan J. Martinez <juan@memset.com>
+  * 0.18
+  - Bug fixes in the code to account the max number of connections per IP,
+    thanks to Konstantin vz'One Enchant
+
 2012-09-11 Juan J. Martinez <juan@memset.com>
   * 0.17.1
   - Bug fix, code cleaning
