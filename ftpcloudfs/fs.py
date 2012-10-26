@@ -254,6 +254,15 @@ class ListDirCache(object):
             if 'subdir' in obj:
                 # {u'subdir': 'dirname'}
                 obj['name'] = obj['subdir'].rstrip("/")
+            elif obj.get('bytes') == 0 and obj.get('hash') and obj.get('content_type') != 'application/directory':
+                # if it's a 0 byte file, has a hash and is not a directory, we make an extra call
+                # to check if it's a manifest file and retrieve the real size / hash
+                manifest_obj = cnt.get_object(obj['name'])
+                logging.debug("possible manifest file: %r" % obj)
+                if manifest_obj.manifest:
+                    logging.debug("manifest found: %s" % manifest_obj.manifest)
+                    obj['hash'] = manifest_obj.etag
+                    obj['bytes'] = manifest_obj.size
             obj['count'] = 1
             # Keep all names in utf-8, just like the filesystem
             name = posixpath.basename(obj['name']).encode("utf-8")

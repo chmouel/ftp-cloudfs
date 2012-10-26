@@ -355,6 +355,20 @@ class CloudFilesFSTest(unittest.TestCase):
         self.assertRaises(EnvironmentError, self.cnx.md5, "/ftpcloudfs_testing/sausage")
         self.cnx.rmdir("/ftpcloudfs_testing/sausage")
 
+    def test_listdir_manifest(self):
+        ''' list directory including a manifest file '''
+        content_string = "0" * 1024
+        for i in range(1, 5):
+            self.create_file("testfile.part/%d" % i, content_string)
+        obj = self.container.create_object("testfile")
+        obj.manifest = '%s/testfile.part' % self.container.name
+        obj.sync_manifest()
+        self.assertEqual(self.cnx.listdir("."), ["testfile", "testfile.part"])
+        self.assertEqual(self.cnx.getsize("testfile"), 4096)
+        self.cnx.remove("testfile")
+        for i in range(1, 5):
+            self.cnx.remove("testfile.part/%d" % i)
+
     def tearDown(self):
         # Delete eveything from the container using the API
         fails = self.container.list_objects()
