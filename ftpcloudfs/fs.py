@@ -115,6 +115,7 @@ class CloudFilesFD(object):
         self.closed = False
         self.total_size = 0
         self.stream = None
+        self.headers = dict()
 
         if not all([container, obj]):
             self.closed = True
@@ -145,11 +146,11 @@ class CloudFilesFD(object):
     def read(self, size=65536):
         '''Read data from the object.
 
-        We can use just one request because 'seek' is not supported.
+        We can use just one request because 'seek' is not fully supported.
 
         NB: It uses the size passed into the first call for all subsequent calls'''
         if not self.stream:
-            self.stream = self.obj.stream(size)
+            self.stream = self.obj.stream(size, hdrs=self.headers)
 
         logging.debug("read size=%r, total_size=%r, obj.size=%r" % (size, self.total_size, self.obj.size))
         try:
@@ -160,10 +161,32 @@ class CloudFilesFD(object):
         else:
             return buff
 
-    def seek(self, *kargs, **kwargs):
-        '''Seek in the object: FIXME doesn't work and raises an error'''
-        logging.debug("seek args=%s, kargs=%s" % (str(kargs), str(kwargs)))
-        raise IOSError(EPERM, "Seek not implemented")
+    def seek(self, offset, whence=None):
+        '''Seek in the object.
+
+        It's supported only for read operations because of the object storage limitations.'''
+        logging.debug("seek offset=%s, whence=%s" % (str(offset), str(whence)))
+        if 'r' in self.mode:
+            if not whence:
+                offs = offset
+            elif whence == 1:
+                offs = self.total_size + offset
+            elif whence == 2:
+                offs = self.obj.size - offset
+            else:
+                raise IOSError(EPERM, "Invalid file offset")
+
+            if offs < 0 or offs > self.obj.size:
+                raise IOSError(EPERM, "Invalid file offset")
+
+            # we need to start over after a seek call
+            if self.stream:
+                self.stream = None
+                self.obj = self.container.get_object(self.name)
+            self.headers['Range'] = "bytes=%s-" % offs
+            self.total_size = offs
+        else:
+            raise IOSError(EPERM, "Seek not available for write operations")
 
 class ListDirCache(object):
     '''
