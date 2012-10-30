@@ -1,3 +1,8 @@
+2012-10-30 Juan J. Martinez <juan@memset.com>
+  * 0.19
+  - Support for manifest file (big files), showing real size/hash
+  - Seek support for read operations (FTP REST + RETR support, AKA resume download)
+
 2012-09-12 Juan J. Martinez <juan@memset.com>
   * 0.18
   - Bug fixes in the code to account the max number of connections per IP,
