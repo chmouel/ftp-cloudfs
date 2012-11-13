@@ -23,10 +23,17 @@ class RackspaceCloudFilesFS(CloudFilesFS, ftpserver.AbstractedFS):
     '''
     servicenet = False
     authurl = None
+    keystone = None
 
-    def __init__(self, username, api_key, servicenet=False, authurl=None):
-        CloudFilesFS.__init__(self, username, api_key, servicenet=self.servicenet, authurl=self.authurl)
-    
+    def __init__(self, username, api_key, servicenet=False, authurl=None, keystone=None):
+        CloudFilesFS.__init__(self,
+                              username,
+                              api_key,
+                              servicenet=self.servicenet,
+                              authurl=self.authurl,
+                              keystone=self.keystone
+                              )
+
     def init_abstracted_fs(self, root, cmd_channel):
         ftpserver.AbstractedFS.__init__(self, root, cmd_channel)
 

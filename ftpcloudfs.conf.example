@@ -52,4 +52,19 @@
 # Masquerade IP address in case your server is behind a firewall or NATed.
 # masquerade-firewall = (empty)
 
+# Auth 2.0 (Keystone), requires keystoneclient
+# keystone-auth = no
+
+# Region name to be used with Auth 2.0 (optional)
+# keystone-region-name = (empty)
+
+# Tenant separator to be used with Auth 2.0 (eg. TENANT.USERNAME)
+# keystone-tenant-separator = '.'
+
+# Service type to be used with Auth 2.0.
+# keystone-service-type = 'object-store'
+
+# Endpoint type to be used with Auth 2.0.
+# keystone-endpoint-type = 'publicURL'
+
 # EOF

@@ -14,7 +14,8 @@ from pyftpdlib import ftpserver
 
 from server import RackspaceCloudFilesFS
 from constants import version, default_address, default_port, \
-    default_config_file, default_banner, default_workers
+    default_config_file, default_banner, default_workers, \
+    default_ks_tenant_separator, default_ks_service_type, default_ks_endpoint_type
 from monkeypatching import MyFTPHandler, MyDTPHandler
 from multiprocessing import Manager
 
@@ -109,6 +110,12 @@ class Main(object):
                                   'uid': None,
                                   'gid': None,
                                   'masquerade-firewall': None,
+                                  # keystone auth 2.0 support
+                                  'keystone-auth': False,
+                                  'keystone-region-name': None,
+                                  'keystone-tenant-separator': default_ks_tenant_separator,
+                                  'keystone-service-type': default_ks_service_type,
+                                  'keystone-endpoint-type': default_ks_endpoint_type,
                                  })
         config.read(default_config_file)
         if not config.has_section('ftpcloudfs'):
@@ -209,7 +216,43 @@ class Main(object):
                           help="GID to drop the privilige to " + \
                               "when in daemon mode.")
 
+        parser.add_option('--keystone-auth',
+                          action="store_true",
+                          dest="keystone",
+                          default=self.config.get('ftpcloudfs', 'keystone-auth'),
+                          help="Use auth 2.0 (Keystone, requires keystoneclient).")
+
+        parser.add_option('--keystone-region-name',
+                          type="str",
+                          dest="region_name",
+                          default=self.config.get('ftpcloudfs', 'keystone-region-name'),
+                          help="Region name to be used in auth 2.0.")
+
+        parser.add_option('--keystone-tenant-separator',
+                          type="str",
+                          dest="tenant_separator",
+                          default=self.config.get('ftpcloudfs', 'keystone-tenant-separator'),
+                          help="Character used to separate tenant_name/username in auth 2.0, " + \
+                              "default: TENANT%sUSERNAME." % default_ks_tenant_separator)
+
+        parser.add_option('--keystone-service-type',
+                          type="str",
+                          dest="service_type",
+                          default=self.config.get('ftpcloudfs', 'keystone-service-type'),
+                          help="Service type to be used in auth 2.0, default: %s." % default_ks_service_type)
+
+        parser.add_option('--keystone-endpoint-type',
+                          type="str",
+                          dest="endpoint_type",
+                          default=self.config.get('ftpcloudfs', 'keystone-endpoint-type'),
+                          help="Endpoint type to be used in auth 2.0, default: %s." % default_ks_endpoint_type)
+
         (options, _) = parser.parse_args()
+
+        if options.keystone:
+            keystone_keys = ('region_name', 'tenant_separator', 'service_type', 'endpoint_type')
+            options.keystone = dict((key, getattr(options, key)) for key in keystone_keys)
+
         self.options = options
 
     def setup_server(self):
@@ -220,6 +263,7 @@ class Main(object):
         MyFTPHandler.banner = banner
         RackspaceCloudFilesFS.servicenet = self.options.servicenet
         RackspaceCloudFilesFS.authurl = self.options.authurl
+        RackspaceCloudFilesFS.keystone = self.options.keystone
         RackspaceCloudFilesFS.memcache_hosts = self.options.memcache
         if self.options.workers > 1 and not self.options.memcache:
             RackspaceCloudFilesFS.single_cache = False

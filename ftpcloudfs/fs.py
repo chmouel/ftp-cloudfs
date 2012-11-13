@@ -53,6 +53,59 @@ class ProxyConnection(Connection):
                 if retry < 0:
                     raise cloudfiles.errors.ResponseError(500, e)
 
+
+class KeystoneAuthentication(object):
+    """
+    cloudfiles authentication class to support auth 2.0.
+
+    This authentication requires keystoneclient library.
+    """
+    ks_client = None
+    ks_exceptions = None
+
+    def __init__(self, username, api_key, authurl, service_type, endpoint_type, tenant_name=None, region_name=None):
+
+        if not self.ks_client:
+            try:
+                from keystoneclient.v2_0 import client as ks_client
+                from keystoneclient import exceptions as ks_exceptions
+            except:
+                raise cloudfiles.errors.AuthenticationError("auth 2.0 requested but failed to import keystoneclient")
+            self.ks_client = ks_client
+            self.ks_exceptions = ks_exceptions
+
+        self.username = username
+        self.api_key = api_key
+        self.authurl = authurl
+        self.tenant_name = tenant_name
+        self.service_type = service_type
+        self.endpoint_type = endpoint_type
+        self.region_name = region_name
+
+    def authenticate(self):
+        try:
+            client = self.ks_client.Client(username=self.username,
+                                           password=self.api_key,
+                                           tenant_name=self.tenant_name,
+                                           auth_url=self.authurl,
+                                           )
+        except self.ks_exceptions.Unauthorized:
+            raise cloudfiles.errors.AuthenticationFailed("Unauthorised. Please check your credentials.")
+        except self.ks_exceptions.AuthorizationFailure, err:
+            raise cloudfiles.errors.AuthenticationFailed("Authorisation failed: %s" % err)
+
+        try:
+            catalog = dict(service_type=self.service_type, endpoint_type=self.endpoint_type)
+            if self.region_name:
+                catalog['attr'] = "region"
+                catalog['filter_value'] = self.region_name
+            endpoint = client.service_catalog.url_for(*catalog)
+        except self.ks_exceptions.EndpointNotFound, e:
+            raise cloudfiles.errors.AuthenticationError("Endpoint not found.")
+
+        # storage_url, cdn_url, auth_token
+        return (endpoint, None, client.auth_token)
+
 def translate_cloudfiles_error(fn):
     """
     Decorator to catch cloudfiles errors and translating them into IOSError.
@@ -404,7 +457,7 @@ class CloudFilesFS(object):
     memcache_hosts = None
 
     @translate_cloudfiles_error
-    def __init__(self, username, api_key, servicenet=False, authurl=None):
+    def __init__(self, username, api_key, servicenet=False, authurl=None, keystone=None):
         '''
         Open the Cloudfiles connection
 
@@ -417,6 +470,7 @@ class CloudFilesFS(object):
         self.connection = None
         self.servicenet = servicenet
         self.authurl = authurl
+        self.keystone = keystone
         if username is not None:
             self.authenticate(username, api_key)
         # A cache to hold the information from the last listdir
@@ -435,6 +489,23 @@ class CloudFilesFS(object):
         # compatibility with old python api versions
         if self.authurl:
             kwargs['authurl'] = self.authurl
+
+        if self.keystone:
+            if self.keystone['tenant_separator'] in username:
+                tenant_name, username = username.split(self.keystone['tenant_separator'], 1)
+            else:
+                tenant_name = None
+            logging.debug("keystone authurl=%r username=%r tenant_name=%r conf=%r" % (self.authurl, username, tenant_name, self.keystone))
+
+            kwargs['auth'] = KeystoneAuthentication(username=username,
+                                                    api_key=api_key,
+                                                    authurl=self.authurl,
+                                                    service_type=self.keystone['service_type'],
+                                                    endpoint_type=self.keystone['endpoint_type'],
+                                                    tenant_name=tenant_name,
+                                                    region_name=self.keystone['region_name'],
+                                                    )
+
         self.connection = ProxyConnection(username, api_key, timeout=cloudfiles_api_timeout, **kwargs)
 
     def close(self):
