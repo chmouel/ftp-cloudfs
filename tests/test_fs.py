@@ -7,6 +7,7 @@ import StringIO
 from datetime import datetime
 import cloudfiles
 from ftpcloudfs.fs import CloudFilesFS, ListDirCache
+from ftpcloudfs.errors import IOSError
 
 import logging
 #logging.getLogger().setLevel(logging.DEBUG)
@@ -354,6 +355,111 @@ class CloudFilesFSTest(unittest.TestCase):
         self.cnx.mkdir("/ftpcloudfs_testing/sausage")
         self.assertRaises(EnvironmentError, self.cnx.md5, "/ftpcloudfs_testing/sausage")
         self.cnx.rmdir("/ftpcloudfs_testing/sausage")
+
+    def test_listdir_manifest(self):
+        ''' list directory including a manifest file '''
+        content_string = "0" * 1024
+        for i in range(1, 5):
+            self.create_file("testfile.part/%d" % i, content_string)
+        obj = self.container.create_object("testfile")
+        obj.manifest = '%s/testfile.part' % self.container.name
+        obj.sync_manifest()
+        self.assertEqual(self.cnx.listdir("."), ["testfile", "testfile.part"])
+        self.assertEqual(self.cnx.getsize("testfile"), 4096)
+        self.cnx.remove("testfile")
+        for i in range(1, 5):
+            self.cnx.remove("testfile.part/%d" % i)
+
+    def test_seek_set_resume(self):
+        ''' seek/resume functionality (seek_set) '''
+        content_string = "This is a chunk of data"*1024
+        self.create_file("testfile.txt", content_string)
+        self.assertEquals(self.cnx.getsize("testfile.txt"), len(content_string))
+
+        fd = self.cnx.open("testfile.txt", "rb")
+        contents = fd.read(1024)
+        fd.close()
+
+        fd = self.cnx.open("testfile.txt", "rb")
+        fd.seek(1024)
+        contents += fd.read(512)
+        fd.close()
+
+        fd = self.cnx.open("testfile.txt", "rb")
+        fd.seek(1024+512)
+        contents += fd.read()
+        fd.close()
+
+        self.assertEqual(contents, content_string)
+        self.cnx.remove("testfile.txt")
+
+    def test_seek_end_resume(self):
+        ''' seek/resume functionality (seek_end) '''
+        content_string = "This is another chunk of data"*1024
+        self.create_file("testfile.txt", content_string)
+        self.assertEquals(self.cnx.getsize("testfile.txt"), len(content_string))
+
+        fd = self.cnx.open("testfile.txt", "rb")
+        contents = fd.read(len(content_string)-1024)
+        fd.close()
+
+        fd = self.cnx.open("testfile.txt", "rb")
+        fd.seek(1024, 2)
+        contents += fd.read()
+        fd.close()
+
+        self.assertEqual(contents, content_string)
+        self.cnx.remove("testfile.txt")
+
+    def test_seek_cur_resume(self):
+        ''' seek/resume functionality (seek_cur) '''
+        content_string = "This is another chunk of data"*1024
+        self.create_file("testfile.txt", content_string)
+        self.assertEquals(self.cnx.getsize("testfile.txt"), len(content_string))
+
+        fd = self.cnx.open("testfile.txt", "rb")
+        contents = fd.read(len(content_string)-1024)
+        fd.close()
+
+        fd = self.cnx.open("testfile.txt", "rb")
+        fd.seek(1024)
+        fd.read(512)
+        fd.seek(len(content_string)-1024-512-1024, 1)
+        contents += fd.read()
+        fd.close()
+
+        self.assertEqual(contents, content_string)
+        self.cnx.remove("testfile.txt")
+
+    def test_seek_invalid_offset(self):
+        ''' seek functionality, invalid offset  '''
+        content_string = "0"*1024
+        self.create_file("testfile.txt", content_string)
+        self.assertEquals(self.cnx.getsize("testfile.txt"), len(content_string))
+
+        fd = self.cnx.open("testfile.txt", "rb")
+        self.assertRaises(IOSError, fd.seek, 1025)
+        fd.close()
+
+        fd = self.cnx.open("testfile.txt", "rb")
+        self.assertRaises(IOSError, fd.seek, -1)
+        fd.close()
+
+        fd = self.cnx.open("testfile.txt", "rb")
+        self.assertRaises(IOSError, fd.seek, -1, 2)
+        fd.close()
+
+        fd = self.cnx.open("testfile.txt", "rb")
+        self.assertRaises(IOSError, fd.seek, 1025, 2)
+        fd.close()
+
+        fd = self.cnx.open("testfile.txt", "rb")
+        fd.read(512)
+        self.assertRaises(IOSError, fd.seek, 513, 1)
+        self.assertRaises(IOSError, fd.seek, -513, 1)
+        fd.close()
+
+        self.cnx.remove("testfile.txt")
 
     def tearDown(self):
         # Delete eveything from the container using the API

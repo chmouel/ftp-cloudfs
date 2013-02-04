@@ -12,6 +12,7 @@ import stat
 import sys
 import logging
 from errno import EPERM, ENOENT, EACCES, ENOTEMPTY, ENOTDIR, EIO
+from ssl import SSLError
 import cloudfiles
 from cloudfiles import Connection
 from chunkobject import ChunkObject
@@ -40,7 +41,17 @@ class ProxyConnection(Connection):
             if not hdrs:
                 hdrs = {}
             hdrs['X-Forwarded-For'] = self.real_ip
-        return super(ProxyConnection, self).make_request(method, path, data, hdrs, parms)
+
+        # SSLErrors are not caught by cloudfiles
+        retry = 5
+        while True:
+            try:
+                return super(ProxyConnection, self).make_request(method, path, data, hdrs, parms)
+            except SSLError, e:
+                retry -= 1
+                logging.debug("%s, retrying (%s)" % (e, retry))
+                if retry < 0:
+                    raise cloudfiles.errors.ResponseError(500, e)
 
 def translate_cloudfiles_error(fn):
     """
@@ -51,7 +62,7 @@ def translate_cloudfiles_error(fn):
     @wraps(fn)
     def wrapper(*args,**kwargs):
         name = getattr(fn, "func_name", "unknown")
-        log = lambda msg: logging.warning("%s: %s" % (name, msg))
+        log = lambda msg: logging.warning("At %s: %s" % (name, msg))
         try:
             return fn(*args, **kwargs)
         except (cloudfiles.errors.NoSuchContainer,
@@ -104,10 +115,11 @@ class CloudFilesFD(object):
         self.closed = False
         self.total_size = 0
         self.stream = None
+        self.headers = dict()
 
         if not all([container, obj]):
             self.closed = True
-            raise IOSError(EPERM, 'Container and object requred')
+            raise IOSError(EPERM, 'Container and object required')
 
         self.container = self.cffs._get_container(self.container)
 
@@ -134,11 +146,11 @@ class CloudFilesFD(object):
     def read(self, size=65536):
         '''Read data from the object.
 
-        We can use just one request because 'seek' is not supported.
-        
+        We can use just one request because 'seek' is not fully supported.
+
         NB: It uses the size passed into the first call for all subsequent calls'''
         if not self.stream:
-            self.stream = self.obj.stream(size)
+            self.stream = self.obj.stream(size, hdrs=self.headers)
 
         logging.debug("read size=%r, total_size=%r, obj.size=%r" % (size, self.total_size, self.obj.size))
         try:
@@ -149,10 +161,32 @@ class CloudFilesFD(object):
         else:
             return buff
 
-    def seek(self, *kargs, **kwargs):
-        '''Seek in the object: FIXME doesn't work and raises an error'''
-        logging.debug("seek args=%s, kargs=%s" % (str(kargs), str(kwargs)))
-        raise IOSError(EPERM, "Seek not implemented")
+    def seek(self, offset, whence=None):
+        '''Seek in the object.
+
+        It's supported only for read operations because of the object storage limitations.'''
+        logging.debug("seek offset=%s, whence=%s" % (str(offset), str(whence)))
+        if 'r' in self.mode:
+            if not whence:
+                offs = offset
+            elif whence == 1:
+                offs = self.total_size + offset
+            elif whence == 2:
+                offs = self.obj.size - offset
+            else:
+                raise IOSError(EPERM, "Invalid file offset")
+
+            if offs < 0 or offs > self.obj.size:
+                raise IOSError(EPERM, "Invalid file offset")
+
+            # we need to start over after a seek call
+            if self.stream:
+                self.stream = None
+                self.obj = self.container.get_object(self.name)
+            self.headers['Range'] = "bytes=%s-" % offs
+            self.total_size = offs
+        else:
+            raise IOSError(EPERM, "Seek not available for write operations")
 
 class ListDirCache(object):
     '''
@@ -162,16 +196,17 @@ class ListDirCache(object):
     own caching here to avoid the stat calls each making a connection.
     '''
     MAX_CACHE_TIME = 10         # seconds to cache the listdir for
+    memcache = None
+
     def __init__(self, cffs):
         self.cffs = cffs
         self.path = None
         self.cache = {}
         self.when = time.time()
-        self.memcache = None
 
-        if self.cffs.memcache_hosts:
+        if self.cffs.memcache_hosts and ListDirCache.memcache is None:
             logging.debug("connecting to memcache %r" % self.cffs.memcache_hosts)
-            self.memcache = memcache.Client(self.cffs.memcache_hosts)
+            ListDirCache.memcache = memcache.Client(self.cffs.memcache_hosts)
 
     def key(self, index):
         '''Returns a key for a user distributed cache'''
@@ -242,6 +277,15 @@ class ListDirCache(object):
             if 'subdir' in obj:
                 # {u'subdir': 'dirname'}
                 obj['name'] = obj['subdir'].rstrip("/")
+            elif obj.get('bytes') == 0 and obj.get('hash') and obj.get('content_type') != 'application/directory':
+                # if it's a 0 byte file, has a hash and is not a directory, we make an extra call
+                # to check if it's a manifest file and retrieve the real size / hash
+                manifest_obj = cnt.get_object(obj['name'])
+                logging.debug("possible manifest file: %r" % obj)
+                if manifest_obj.manifest:
+                    logging.debug("manifest found: %s" % manifest_obj.manifest)
+                    obj['hash'] = manifest_obj.etag
+                    obj['bytes'] = manifest_obj.size
             obj['count'] = 1
             # Keep all names in utf-8, just like the filesystem
             name = posixpath.basename(obj['name']).encode("utf-8")
@@ -501,7 +545,7 @@ class CloudFilesFS(object):
             raise IOSError(ENOENT, 'No such file or directory')
 
         if self.listdir(path):
-            raise IOSError(ENOTEMPTY, "Directory not empty: '%s'" % path)
+            raise IOSError(ENOTEMPTY, "Directory not empty: %s" % path)
 
         cnt = self._get_container(container)
 
@@ -561,7 +605,7 @@ class CloudFilesFS(object):
         # Check constraints for renaming a directory
         if self.isdir(src):
             if self.listdir(src):
-                raise IOSError(ENOTEMPTY, "Can't rename non-empty directory: '%s'" % src)
+                raise IOSError(ENOTEMPTY, "Can't rename non-empty directory: %s" % src)
             if self.isfile(dst):
                 raise IOSError(ENOTDIR, "Can't rename directory to file")
         # Check not renaming to itself
@@ -577,19 +621,17 @@ class CloudFilesFS(object):
             return self._rename_container(src_container_name, dst_container_name)
         # ...otherwise can't deal with root stuff
         if not src_container_name or not src_path or not dst_container_name or not dst_path:
-            logging.info("Can't rename %r -> %r" % (src, dst))
             raise IOSError(EACCES, "Can't rename to / from root")
         # Check destination directory exists
         if not self.isdir(posixpath.split(dst)[0]):
-            logging.info("Can't copy %r -> %r dst directory doesn't exist" % (src, dst))
-            raise IOSError(ENOENT, "Can't copy %r -> %r dst directory doesn't exist" % (src, dst))
+            raise IOSError(ENOENT, "Can't copy %r to %r, destination directory doesn't exist" % (src, dst))
         # Do the rename of the file/dir
         src_container = self._get_container(src_container_name)
         dst_container = self._get_container(dst_container_name)
         src_obj = src_container.get_object(src_path)
         # Copy src -> dst
         src_obj.copy_to(dst_container_name, dst_path)
-        # Delete dst
+        # Delete src
         src_container.delete_object(src_path)
         self._listdir_cache.flush(posixpath.dirname(src))
         self._listdir_cache.flush(posixpath.dirname(dst))

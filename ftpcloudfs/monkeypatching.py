@@ -28,6 +28,7 @@ class MyFTPHandler(ftpserver.FTPHandler):
     timeout = 0
     dtp_handler = MyDTPHandler
     authorizer = RackspaceCloudAuthorizer()
+    max_cons_per_ip = 0
 
     @staticmethod
     def abstracted_fs(root, cmd_channel):
@@ -57,39 +58,49 @@ class MyFTPHandler(ftpserver.FTPHandler):
 
     def handle(self):
         """Track the ip and check max cons per ip (if needed)"""
-        if self.server.max_cons_per_ip and self.remote_ip and self.shared_ip_map != None:
+        if self.max_cons_per_ip and self.remote_ip and self.shared_ip_map != None:
+            count = 0
             try:
                 self.shared_lock.acquire()
-                count = self.shared_ip_map.get(self.remote_ip, 0)
-                self.shared_ip_map[self.remote_ip] = count + 1
-                self.shared_lock.release()
+                count = self.shared_ip_map.get(self.remote_ip, 0) + 1
+                self.shared_ip_map[self.remote_ip] = count
+                self.logline("Connected, shared ip map: %s" % self.shared_ip_map)
             except RemoteError, e:
-                self.log("connection tracking failed: %s" % e)
+                self.logerror("Connection tracking failed: %s" % e)
+            finally:
+                self.shared_lock.release()
 
-            self.logline("connection track: %s -> %s" % (self.remote_ip, count+1))
+            self.logline("Connection track: %s -> %s" % (self.remote_ip, count))
 
-            if self.shared_ip_map[self.remote_ip] > self.server.max_cons_per_ip:
+            if count > self.max_cons_per_ip:
                 self.handle_max_cons_per_ip()
                 return
-
-            self.logline("connected, shared ip map: %s" % self.shared_ip_map)
 
         super(MyFTPHandler, self).handle()
 
     def close(self):
         """Remove the ip from the shared map before calling close"""
-        if not self._closed and self.server.max_cons_per_ip and self.shared_ip_map != None:
-            if self.remote_ip in self.shared_ip_map:
-                try:
-                    self.shared_lock.acquire()
+        if not self._closed and self.max_cons_per_ip and self.shared_ip_map != None:
+            try:
+                self.shared_lock.acquire()
+                if self.remote_ip in self.shared_ip_map:
                     self.shared_ip_map[self.remote_ip] -= 1
                     if self.shared_ip_map[self.remote_ip] <= 0:
                         del self.shared_ip_map[self.remote_ip]
-                    self.shared_lock.release()
-                except RemoteError, e:
-                    self.log("connection tracking cleanup failed: %s" % e)
+                self.logline("Disconnected, shared ip map: %s" % self.shared_ip_map)
+            except RemoteError, e:
+                self.logerror("Connection tracking cleanup failed: %s" % e)
+            finally:
+                self.shared_lock.release()
 
-                self.logline("disconnected, shared ip map: %s" % self.shared_ip_map)
 
         super(MyFTPHandler, self).close()
+
+    def log_cmd(self, cmd, arg, respcode, respstr):
+        """
+        We use the same format pyftpdlib is using, but we want to log more commands.
+        """
+        if cmd in ("ABOR", "APPE", "DELE", "RMD", "RNFR", "RNTO", "RETR", "STOR", "MKD"):
+            line = '"%s" %s' % (' '.join([cmd, str(arg)]).strip(), respcode)
+            self.log(line)
 

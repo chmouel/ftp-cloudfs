@@ -42,9 +42,10 @@ class RackspaceCloudAuthorizer(ftpserver.DummyAuthorizer):
         try:
             cffs = RackspaceCloudFilesFS(username, password)
         except EnvironmentError, e:
-            logging.error("Failed to authenticate: %s" % e)
+            logging.error("Failed to authenticate user %s: %s" % (username, e))
             return False
         self.abstracted_fs_for_user[username] = cffs
+        logging.info("Authentication validated for user %s" % username)
         return True
 
     def get_abstracted_fs(self, username):

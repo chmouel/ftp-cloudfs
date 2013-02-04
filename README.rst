@@ -3,7 +3,7 @@ FTP Interface to Rackspace Cloud Files and OpenStack Swift
 ==========================================================
 
 :Homepage:  http://blog.chmouel.com/2009/10/29/ftp-server-for-cloud-files/
-:Credits:   Copyright 2009--2011 Chmouel Boudjnah <chmouel@chmouel.com>
+:Credits:   Copyright 2009--2012 Chmouel Boudjnah <chmouel@chmouel.com>
 :Licence:   MIT
 
 
@@ -27,7 +27,7 @@ It supports pseudo-hierarchical folders/directories as described in the `Rackspa
 REQUIREMENT
 ===========
 
-- Python >= 2.6 (probably 2.5 as well but not extensively tested)
+- Python >= 2.6
 - python-cloudfiles >= 1.3.0  - http://github.com/rackspace/python-cloudfiles
 - pyftpdlib >= 0.6.0 - http://code.google.com/p/pyftpdlib/
 - python-daemon >= 1.6 - http://pypi.python.org/pypi/python-daemon/
@@ -119,10 +119,9 @@ tracker :
 
 https://github.com/chmouel/ftp-cloudfs/issues
 
-BUGS
-====
+There's additional information at :
 
-None known ;-)
+https://github.com/chmouel/ftp-cloudfs/wiki
 
 LICENSE
 =======
@@ -132,7 +131,7 @@ exceptions contain licensing information in them.
 
 .. _`MIT`: http://en.wikipedia.org/wiki/MIT_License
 
-  Copyright (C) 2009-2011 Chmouel Boudjnah <chmouel@chmouel.com>
+  Copyright (C) 2009-2012 Chmouel Boudjnah <chmouel@chmouel.com>
 
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal
@@ -157,15 +156,17 @@ exceptions contain licensing information in them.
   in this Software without prior written authorisation from Rackspace US, Inc. 
 
 Authors
-======
+=======
 
 - Chmouel Boudjnah <chmouel@chmouel.com>
 - Nick Craig-Wood <nick@craig-wood.com>
-- Juan J. Martinez <juan@memset.com>
+- Juan J. Martinez <jjm@usebox.net>
 
 
 Contributors
 ============
 
 - Christophe Le Guern <c35sys@gmail.com>
+- Konstantin vz'One Enchant <sirkonst@gmail.com>
+- Maxim Mitroshin <mitroshin@selectel.org>
 

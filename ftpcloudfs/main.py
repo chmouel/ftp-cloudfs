@@ -63,10 +63,9 @@ class Main(object):
             """
             Dummy function.
             """
-            log_type("%s[%s]: %s" % (__package__, pid, msg))
-        ftpserver.log = lambda msg: log(logging.info, self.pid, msg)
-        ftpserver.logline = lambda msg: log(logging.debug, self.pid, msg)
-        ftpserver.logerror = lambda msg: log(logging.error, self.pid, msg)
+        ftpserver.log = logging.info
+        ftpserver.logline = logging.debug
+        ftpserver.logerror = logging.error
 
         if self.options.log_level:
             self.options.log_level = logging.DEBUG
@@ -82,6 +81,9 @@ class Main(object):
                 # fall back to UDP
                 handler = SysLogHandler(facility=SysLogHandler.LOG_DAEMON)
             finally:
+                prefix = "%s[%s]: " % (__package__, self.pid)
+                formatter = logging.Formatter(prefix + "%(message)s")
+                handler.setFormatter(formatter)
                 logger.addHandler(handler)
                 logger.setLevel(self.options.log_level)
         else:
@@ -234,11 +236,14 @@ class Main(object):
         except ValueError, errmsg:
             sys.exit('Max connections per IP error: %s' % errmsg)
 
-        ftpserver.FTPServer.max_cons_per_ip = max_cons_per_ip
-
         ftpd = ftpserver.FTPServer((self.options.bind_address,
                                     self.options.port),
                                    MyFTPHandler)
+
+        # set it to unlimited, we use our own checks with a shared dict
+        ftpd.max_cons_per_ip = 0
+        ftpd.handler.max_cons_per_ip = max_cons_per_ip
+
         return ftpd
 
     def setup_daemon(self, preserve=None):

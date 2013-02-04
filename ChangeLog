@@ -1,3 +1,39 @@
+2012-10-30 Juan J. Martinez <juan@memset.com>
+  * 0.19
+  - Support for manifest file (big files), showing real size/hash
+  - Seek support for read operations (FTP REST + RETR support, AKA resume download)
+
+2012-09-12 Juan J. Martinez <juan@memset.com>
+  * 0.18
+  - Bug fixes in the code to account the max number of connections per IP,
+    thanks to Konstantin vz'One Enchant
+
+2012-09-11 Juan J. Martinez <juan@memset.com>
+  * 0.17.1
+  - Bug fix, code cleaning
+   - when the retry code on SSLError fails, an exception was raised making that
+     worker crash; thanks to Konstantin vz'One Enchant for the patch
+
+2012-09-07 Juan J. Martinez <juan@memset.com>
+  * 0.17
+  - Bug fixes from Maxim Mitroshin <mitroshin@selectel.org>
+   - Fixed a race condition when checking the max connections per IP
+   - More efficient shared cache by limiting the number of Memcache connections
+
+2012-09-04 Juan J. Martinez <juan@memset.com>
+  * 0.16
+  - Improved logging, including formatting, log in, log out and most important commands
+
+2012-08-31 Juan J. Martinez <juan@memset.com>
+  * 0.15
+  - Bug fixes
+   - Catch SSLErrors on Connection.make_request and retry
+   - Added X-Forwarded-For header to PUT requests
+
+2012-06-22 Juan J. Martinez <juan@memset.com>
+  * 0.14
+   Support for directory listings with more than 10000 objects
+
 2012-06-07 Juan J. Martinez <juan@memset.com>
    * 0.13
     Shared cache bug fixes and improvements
