@@ -1,0 +1,2 @@
+version=3
+https://github.com/chmouel/ftp-cloudfs/tags .*/(\d[\d\.]+)\.tar\.gz

@@ -1,4 +1,4 @@
-Format: http://dep.debian.net/deps/dep5
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: ftp-cloudfs
 Source: https://github.com/chmouel/ftp-cloudfs
 
@@ -22,7 +22,7 @@ License: MIT
  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
- .
+
 Files: debian/*
 Copyright: 2011 Christophe Le Guern <c35sys@gmail.com>
 License: GPL-2+
