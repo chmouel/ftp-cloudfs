@@ -1,6 +1,6 @@
 /var/log/ftp-cloudfs/ftp-cloudfs.log
 {
-	rotate 365
+	rotate 15
 	daily
 	dateext
 	missingok

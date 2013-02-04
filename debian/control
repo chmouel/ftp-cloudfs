@@ -2,14 +2,17 @@ Source: ftp-cloudfs
 Section: net
 Priority: extra
 Maintainer: Christophe Le Guern <c35sys@gmail.com>
-Build-Depends: debhelper (>= 8.0.0), python-setuptools
-Standards-Version: 3.9.2
+Build-Depends: debhelper (>= 9), python-setuptools, python-all (>= 2.6.6-3~)
+Standards-Version: 3.9.4
 Homepage: https://github.com/chmouel/ftp-cloudfs
 
 Package: ftp-cloudfs
 Architecture: all
-Depends: adduser, python, python-cloudfiles (>= 1.3.0), python-pyftpdlib (>= 0.5.2), python-daemon (>= 1.5.5), python-memcache (>= 1.45)
+Depends: ${python:Depends}, ${misc:Depends}, lsb-base, adduser, python-cloudfiles, python-pyftpdlib, python-daemon (>= 1.5.5), python-memcache (>= 1.45)
 Recommends: python-docutils
-Description: A FTP interface to Rackspace Cloud Files and OpenStack Object Storage
- This is a FTP interface to Rackspace Cloud Files and OpenStack Object Storage
- allow you to use any FTP clients to use Cloud Files.
+Description: FTP interface to Rackspace Cloud Files and OpenStack Object Storage
+ FTP-CloudFS is an FTP server acting as a proxy to Rackspace Cloud Files or to
+ OpenStack Object Storage (Swift). It allows you to connect via any FTP client
+ to do upload/download or create containers. It supports pseudo-hierarchical
+ folders/directories as described in the Rackspace Cloud Files API and the
+ OpenStack Object Storage API.
