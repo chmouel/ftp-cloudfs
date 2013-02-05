@@ -1,3 +1,9 @@
+2013-02-05 Juan J. Martinez <juan@memset.com>
+
+  * 0.19.1
+  - Minor release to fix Debian packaging support
+  - Copyright year bump
+
 2012-10-30 Juan J. Martinez <juan@memset.com>
   * 0.19
   - Support for manifest file (big files), showing real size/hash
