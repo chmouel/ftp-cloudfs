@@ -99,7 +99,7 @@ class KeystoneAuthentication(object):
             if self.region_name:
                 catalog['attr'] = "region"
                 catalog['filter_value'] = self.region_name
-            endpoint = client.service_catalog.url_for(*catalog)
+            endpoint = client.service_catalog.url_for(**catalog)
         except self.ks_exceptions.EndpointNotFound, e:
             raise cloudfiles.errors.AuthenticationError("Endpoint not found.")
 
