@@ -33,12 +33,16 @@ REQUIREMENT
 - python-daemon >= 1.6 - http://pypi.python.org/pypi/python-daemon/
 - python-memcache >= 1.45 - http://www.tummy.com/Community/software/python-memcached/
 
+Optional, only for Auth 2.0 (Keystone):
+
+- python-keystoneclient >= 0.1.3.66 - https://github.com/openstack/python-keystoneclient
+
 Operating Systems
 =================
 
 This has been tested on a Debian testing Linux distribution but it
 should work on any Unices (including MacOSX) as long you have the
-requirement listed above. 
+requirement listed above.
 
 It should as well work on Windows but this has been completely
 untested.
@@ -91,6 +95,18 @@ Usage: ftpcloudfs [OPTIONS].....
   --pid-file=PID_FILE   Pid file location when in daemon mode.
   --uid=UID             UID to drop the privilege to when in daemon mode
   --gid=GID             GID to drop the privilege to when in daemon mode
+  --keystone-auth       Use auth 2.0 (Keystone, requires keystoneclient).
+  --keystone-region-name=REGION_NAME
+                        Region name to be used in auth 2.0.
+  --keystone-tenant-separator=TENANT_SEPARATOR
+                        Character used to separate tenant_name/username in
+                        auth 2.0, default: TENANT.USERNAME.
+  --keystone-service-type=SERVICE_TYPE
+                        Service type to be used in auth 2.0, default: object-
+                        store.
+  --keystone-endpoint-type=ENDPOINT_TYPE
+                        Endpoint type to be used in auth 2.0, default:
+                        publicURL.
 
 The defaults can be changed using a configuration file (by default in
 /etc/ftpcloudfs.conf). Check the example file included in the package.
@@ -108,6 +124,21 @@ are configured.
 
 If you're using just one worker the local cache will be fine, but if you're using
 several workers, configuring an external cache is highly recommended.
+
+AUTH 2.0
+========
+
+By default ftp-cloudfs will use Swift auth 1.0, that is compatible with `Rackspace Cloud Files`
+and `OpenStack Object Storage` using `swauth`_ auth middleware.
+
+Optionally `OpenStack Identity Service 2.0`_ can be used. Currently python-keystoneclient is
+required to use auth 2.0 and it can be enabled with ``keystone-auth`` option.
+
+You can provide a tenant name in the FTP login user with TENANT.USERNAME (using a dot as
+separator). Please check the example configuration file for further details.
+
+.. _swauth: https://github.com/gholt/swauth
+.. _OpenStack Identity Service 2.0: http://docs.openstack.org/api/openstack-identity-service/2.0/content/index.html
 
 SUPPORT
 =======
