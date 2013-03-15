@@ -1,3 +1,10 @@
+2013-03-15 Juan J. Martinez <juan@memset.com>
+
+  * 0.20.1
+  
+  - This will be the last release supporting pyftpdlib <= 0.7.0.
+    pyftpdlib 1.0.1 will work with a warning.
+
 2013-02-07 Juan J. Martinez <juan@memset.com>
 
   * 0.20
