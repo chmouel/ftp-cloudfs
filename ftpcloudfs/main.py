@@ -10,13 +10,13 @@ from logging.handlers import SysLogHandler
 import gc
 
 from optparse import OptionParser
-from pyftpdlib import ftpserver
+import pyftpdlib.servers
 
 from server import RackspaceCloudFilesFS
 from constants import version, default_address, default_port, \
     default_config_file, default_banner, default_workers, \
     default_ks_tenant_separator, default_ks_service_type, default_ks_endpoint_type
-from monkeypatching import MyFTPHandler, MyDTPHandler
+from monkeypatching import MyFTPHandler
 from multiprocessing import Manager
 
 def modify_supported_ftp_commands():
@@ -25,15 +25,15 @@ def modify_supported_ftp_commands():
         'SITE CHMOD',
     )
     for cmd in unsupported:
-        if cmd in ftpserver.proto_cmds:
-            del ftpserver.proto_cmds[cmd]
+        if cmd in pyftpdlib.handlers.proto_cmds:
+            del pyftpdlib.handlers.proto_cmds[cmd]
     # add the MD5 command, FTP extension according to IETF Draft:
     # http://tools.ietf.org/html/draft-twine-ftpmd5-00
-    ftpserver.proto_cmds.update({
+    pyftpdlib.handlers.proto_cmds.update({
         'MD5': dict(perm=None,
                     auth=True,
                     arg=True,
-                    help='Syntax: MD5 <SP> file-name (get MD5 of file)')
+                    help=u'Syntax: MD5 <SP> file-name (get MD5 of file)')
         })
 
 def start_garbage_collector(interval=10):
@@ -44,7 +44,7 @@ def start_garbage_collector(interval=10):
         Run the garbage collector every interval seconds to make sure
         sleeping daemons get cleaned properly
         """
-        ftpserver.CallLater(interval, garbage_collect)
+        pyftpdlib.ioloop.IOLoop.instance().call_later(interval, garbage_collect)
         gc.collect()
     if interval:
         garbage_collect()
@@ -64,9 +64,6 @@ class Main(object):
             """
             Dummy function.
             """
-        ftpserver.log = logging.info
-        ftpserver.logline = logging.debug
-        ftpserver.logerror = logging.error
 
         if self.options.log_level:
             self.options.log_level = logging.DEBUG
@@ -258,7 +255,7 @@ class Main(object):
     def setup_server(self):
         """Run the main ftp server loop"""
         banner = self.config.get('ftpcloudfs', 'banner').replace('%v', version)
-        banner = banner.replace('%f', ftpserver.__ver__)
+        banner = banner.replace('%f', pyftpdlib.__ver__)
 
         MyFTPHandler.banner = banner
         RackspaceCloudFilesFS.servicenet = self.options.servicenet
@@ -280,9 +277,9 @@ class Main(object):
         except ValueError, errmsg:
             sys.exit('Max connections per IP error: %s' % errmsg)
 
-        ftpd = ftpserver.FTPServer((self.options.bind_address,
-                                    self.options.port),
-                                   MyFTPHandler)
+        ftpd = pyftpdlib.servers.FTPServer((self.options.bind_address,
+                                            self.options.port),
+                                            MyFTPHandler)
 
         # set it to unlimited, we use our own checks with a shared dict
         ftpd.max_cons_per_ip = 0

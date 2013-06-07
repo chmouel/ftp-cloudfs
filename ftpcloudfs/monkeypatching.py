@@ -1,29 +1,27 @@
-import asyncore
-
-from pyftpdlib import ftpserver
+from pyftpdlib.handlers import DTPHandler, FTPHandler, _strerror
 from ftpcloudfs.utils import smart_str
 from server import RackspaceCloudAuthorizer
 from multiprocessing.managers import RemoteError
 
-class MyDTPHandler(ftpserver.DTPHandler):
+class MyDTPHandler(DTPHandler):
     def send(self, data):
-        data=smart_str(data)
-        return super(MyDTPHandler, self).send(data)
+        data = smart_str(data)
+        return DTPHandler.send(self, data)
 
     def close(self):
         if self.file_obj is not None and not self.file_obj.closed:
             try:
                 self.file_obj.close()
             except Exception, e:
-                msg = "Data connection error (%s)" % e
+                msg = u"Data connection error (%s)" % e
                 self.cmd_channel.log(msg)
-                self.cmd_channel.respond("421 " + msg)
+                self.cmd_channel.respond(u"421 " + msg)
             finally:
                 self.file_obj = None
 
-        super(MyDTPHandler, self).close()
+        DTPHandler.close(self)
 
-class MyFTPHandler(ftpserver.FTPHandler):
+class MyFTPHandler(FTPHandler):
     # don't kick off client in long time transactions
     timeout = 0
     dtp_handler = MyDTPHandler
@@ -43,14 +41,14 @@ class MyFTPHandler(ftpserver.FTPHandler):
             if not self.fs.single_cache:
                 self.fs.flush()
             self.fs.connection.real_ip = self.remote_ip
-        super(MyFTPHandler, self).process_command(cmd, *args, **kwargs)
+        FTPHandler.process_command(self, cmd, *args, **kwargs)
 
     def ftp_MD5(self, path):
         line = self.fs.fs2ftp(path)
         try:
             md5_checksum = self.run_as_current_user(self.fs.md5, path)
         except OSError, err:
-            why = ftpserver._strerror(err)
+            why = _strerror(err)
             self.respond('550 %s.' % why)
         else:
             msg = md5_checksum.upper()
@@ -76,7 +74,7 @@ class MyFTPHandler(ftpserver.FTPHandler):
                 self.handle_max_cons_per_ip()
                 return
 
-        super(MyFTPHandler, self).handle()
+        FTPHandler.handle(self)
 
     def close(self):
         """Remove the ip from the shared map before calling close"""
@@ -94,7 +92,7 @@ class MyFTPHandler(ftpserver.FTPHandler):
                 self.shared_lock.release()
 
 
-        super(MyFTPHandler, self).close()
+        FTPHandler.close(self)
 
     def log_cmd(self, cmd, arg, respcode, respstr):
         """

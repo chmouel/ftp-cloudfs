@@ -283,7 +283,7 @@ class CloudFilesFSTest(unittest.TestCase):
     def test_unicode_file(self):
         '''Test unicode file creation'''
         # File names use a utf-8 interface
-        file_name = u"Smiley\u263a.txt".encode("utf-8")
+        file_name = "Smiley\u263a.txt".encode("utf-8")
         self.create_file(file_name, "Hello Moto")
         self.assertEqual(self.cnx.listdir("."), [file_name])
         self.cnx.remove(file_name)
@@ -291,14 +291,14 @@ class CloudFilesFSTest(unittest.TestCase):
     def test_unicode_directory(self):
         '''Test unicode directory creation'''
         # File names use a utf-8 interface
-        dir_name = u"Smiley\u263aDir".encode("utf-8")
+        dir_name = "Smiley\u263aDir".encode("utf-8")
         self.cnx.mkdir(dir_name)
         self.assertEqual(self.cnx.listdir("."), [dir_name])
         self.cnx.rmdir(dir_name)
 
     def test_mkdir_container_unicode(self):
         ''' mkdir/chdir/rmdir directory '''
-        directory = u"/Smiley\u263aContainer".encode("utf-8")
+        directory = "/Smiley\u263aContainer".encode("utf-8")
         self.cnx.mkdir(directory)
         self.cnx.chdir(directory)
         self.cnx.rmdir(directory)

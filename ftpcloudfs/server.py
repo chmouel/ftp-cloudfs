@@ -6,19 +6,13 @@
 # help you if you send me an email or leave a comment (preferred
 # method) on my blog: http://blog.chmouel.com
 import os
-import time
-import mimetypes
-import stat
-import sys
-import logging
-from errno import EPERM, ENOENT, EACCES, ENOTEMPTY, ENOTDIR, EIO
 
-from pyftpdlib import ftpserver
-import cloudfiles
-from errors import IOSError
+from pyftpdlib.filesystems import AbstractedFS
+from pyftpdlib.authorizers import DummyAuthorizer
+
 from fs import CloudFilesFS
 
-class RackspaceCloudFilesFS(CloudFilesFS, ftpserver.AbstractedFS):
+class RackspaceCloudFilesFS(CloudFilesFS, AbstractedFS):
     '''Rackspace Cloud Files File system emulation for FTP server.
     '''
     servicenet = False
@@ -35,24 +29,24 @@ class RackspaceCloudFilesFS(CloudFilesFS, ftpserver.AbstractedFS):
                               )
 
     def init_abstracted_fs(self, root, cmd_channel):
-        ftpserver.AbstractedFS.__init__(self, root, cmd_channel)
+        AbstractedFS.__init__(self, root, cmd_channel)
 
-class RackspaceCloudAuthorizer(ftpserver.DummyAuthorizer):
+class RackspaceCloudAuthorizer(DummyAuthorizer):
     '''FTP server authorizer. Logs the users into Rackspace Cloud
     Files and keeps track of them.
     '''
     users = {}
     abstracted_fs_for_user = {}
 
-    def validate_authentication(self, username, password):
+    def validate_authentication(self, username, password, handler):
         '''Validates the username and passwords.  This creates the AbstractedFS at the same time and caches it under the username for retrieval with get_abstracted_fs'''
         try:
             cffs = RackspaceCloudFilesFS(username, password)
         except EnvironmentError, e:
-            logging.error("Failed to authenticate user %s: %s" % (username, e))
+            handler.logerror("Failed to authenticate user %s: %s" % (username, e))
             return False
         self.abstracted_fs_for_user[username] = cffs
-        logging.info("Authentication validated for user %s" % username)
+        handler.log("Authentication validated for user %s" % username)
         return True
 
     def get_abstracted_fs(self, username):
@@ -68,13 +62,13 @@ class RackspaceCloudAuthorizer(ftpserver.DummyAuthorizer):
         return True
 
     def get_perms(self, username):
-        return 'lrdw'
+        return u'lrdw'
 
     def get_home_dir(self, username):
-        return os.sep
+        return unicode(os.sep)
 
     def get_msg_login(self, username):
-        return 'Welcome %s' % username
+        return u'Welcome %s' % username
 
     def get_msg_quit(self, username):
-        return 'Goodbye %s' % username
+        return u'Goodbye %s' % username

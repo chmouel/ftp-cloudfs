@@ -9,7 +9,6 @@ import os
 import time
 import mimetypes
 import stat
-import sys
 import logging
 from errno import EPERM, ENOENT, EACCES, ENOTEMPTY, ENOTDIR, EIO
 from ssl import SSLError
@@ -270,7 +269,7 @@ class ListDirCache(object):
 
     def flush(self, path=None):
         '''Flush the listdir cache'''
-        logging.debug("cache flush, path: %s" % self.path)
+        logging.debug("cache flush, current path: %s request: %s" % (self.path, path))
         if self.memcache:
             if self.path is not None:
                 logging.debug("flushing memcache for %r" % self.path)
@@ -445,6 +444,7 @@ class ListDirCache(object):
             bytes = sum(stat_info.st_size for stat_info in self.cache.values())
             count = len(self.cache)
             stat_info = self._make_stat(count=count, bytes=bytes)
+        logging.debug("stat path: %r" % stat_info)
         return stat_info
 
 class CloudFilesFS(object):
@@ -592,7 +592,8 @@ class CloudFilesFS(object):
         '''List a directory, raise OSError on error'''
         path = self.abspath(path)
         logging.debug("listdir %r" % path)
-        return self._listdir_cache.listdir(path)
+        list_dir = map(lambda s: s.decode('utf-8', 'strict'), self._listdir_cache.listdir(path))
+        return map(unicode, list_dir)
 
     @translate_cloudfiles_error
     def listdir_with_stat(self, path):
@@ -601,7 +602,8 @@ class CloudFilesFS(object):
         (leafname, stat_result)'''
         path = self.abspath(path)
         logging.debug("listdir_with_stat %r" % path)
-        return self._listdir_cache.listdir_with_stat(path)
+        list_dir = map(lambda s: s.decode('utf-8', 'strict'), self._listdir_cache.listdir_with_stat(path))
+        return map(unicode, list_dir)
 
     @translate_cloudfiles_error
     def rmdir(self, path):

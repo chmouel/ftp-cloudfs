@@ -6,6 +6,8 @@ from cloudfiles import consts
 from cloudfiles.storage_object import Object
 from cloudfiles.errors  import ResponseError
 
+from ftpcloudfs.utils import smart_str
+
 class ChunkObject(Object):
     def prepare_chunk(self):
         self.size = None
@@ -18,8 +20,10 @@ class ChunkObject(Object):
         if not self.content_type:
             self.content_type = 'application/octet-stream'
 
-        path = "/%s/%s/%s" % (self.container.conn.uri.rstrip('/'), \
-                quote(self.container.name), quote(self.name))
+        path = "/%s/%s/%s" % (self.container.conn.uri.rstrip('/'),
+                              quote(smart_str(self.container.name)),
+                              quote(smart_str(self.name)),
+                              )
         headers = self._make_headers()
         if self.size is None:
             del headers['Content-Length']
