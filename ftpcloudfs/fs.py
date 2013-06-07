@@ -453,7 +453,6 @@ class CloudFilesFS(object):
     All the methods on this class emulate os.* or os.path.* functions
     of the same name.
     '''
-    single_cache = True
     memcache_hosts = None
 
     @translate_cloudfiles_error

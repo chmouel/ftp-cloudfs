@@ -82,7 +82,6 @@ Usage: ftpcloudfs [OPTIONS].....
   -p PORT, --port=PORT  Port to bind the server default: 2021.
   -b BIND_ADDRESS, --bind-address=BIND_ADDRESS
                         Address to bind by default: 127.0.0.1.
-  --workers=WORKERS     Number of workers to use default: 1.
   --memcache=MEMCACHE   Memcache server(s) to be used for cache (ip:port).
   -a AUTHURL, --auth-url=AUTHURL
                         Auth URL for alternate providers(eg OpenStack)
@@ -122,8 +121,8 @@ To improve the performance a cache is used. It can be local or external (with
 Memcache). By default a local cache is used, unless one or more Memcache servers
 are configured.
 
-If you're using just one worker the local cache will be fine, but if you're using
-several workers, configuring an external cache is highly recommended.
+If you're using just one client the local cache may be fine, but if you're using
+several connections, configuring an external cache is highly recommended.
 
 AUTH 2.0
 ========

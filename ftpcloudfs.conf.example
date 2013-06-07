@@ -12,10 +12,8 @@
 # Address to bind.
 # bind-address = 127.0.0.1
 
-# Number of workers to use.
-# The number of workers depends on the number of available
-# cores and the expected load.
-# workers = 1
+# DEPRECATED: Number of workers to use (no effect)
+# workers = (empty)
 
 # Memcache server(s) for external cache (eg 127.0.0.1:11211)
 # Can be a comma-separated list.

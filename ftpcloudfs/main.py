@@ -7,14 +7,13 @@ import socket
 from ConfigParser import RawConfigParser
 import logging
 from logging.handlers import SysLogHandler
-import gc
 
 from optparse import OptionParser
 import pyftpdlib.servers
 
 from server import RackspaceCloudFilesFS
 from constants import version, default_address, default_port, \
-    default_config_file, default_banner, default_workers, \
+    default_config_file, default_banner, \
     default_ks_tenant_separator, default_ks_service_type, default_ks_endpoint_type
 from monkeypatching import MyFTPHandler
 from multiprocessing import Manager
@@ -36,26 +35,12 @@ def modify_supported_ftp_commands():
                     help=u'Syntax: MD5 <SP> file-name (get MD5 of file)')
         })
 
-def start_garbage_collector(interval=10):
-    """Starts the garbage collector at the interval in seconds. 0 means
-    disabled"""
-    def garbage_collect():
-        """
-        Run the garbage collector every interval seconds to make sure
-        sleeping daemons get cleaned properly
-        """
-        pyftpdlib.ioloop.IOLoop.instance().call_later(interval, garbage_collect)
-        gc.collect()
-    if interval:
-        garbage_collect()
-
 class Main(object):
     """ FTPCloudFS: A FTP Proxy Interface to Rackspace Cloud Files or
     OpenStack swift."""
 
     def __init__(self):
         self.options = None
-        self._workers = []
 
     def setup_log(self):
         ''' Setup Logging '''
@@ -90,12 +75,16 @@ class Main(object):
                                 format=log_format,
                                 level=self.options.log_level)
 
+        # warnings
+        if self.config.get("ftpcloudfs", "workers") is not None:
+            logging.warning("workers configuration token has been deprecated and has no effect")
+
     def parse_configuration(self, config_file=default_config_file):
         ''' Parse Configuration File '''
         config = RawConfigParser({'banner': default_banner,
                                   'port': default_port,
                                   'bind-address': default_address,
-                                  'workers': default_workers,
+                                  'workers': None,
                                   'memcache': None,
                                   'max-cons-per-ip': '0',
                                   'auth-url': None,
@@ -136,13 +125,6 @@ class Main(object):
                           default=self.config.get('ftpcloudfs', 'bind-address'),
                           help="Address to bind by default: %s." % \
                               (default_address))
-
-        parser.add_option('--workers',
-                          type="int",
-                          dest="workers",
-                          default=self.config.get('ftpcloudfs', 'workers'),
-                          help="Number of workers to use default: %d." % \
-                              (default_workers))
 
         memcache = self.config.get('ftpcloudfs', 'memcache')
         if memcache:
@@ -262,8 +244,6 @@ class Main(object):
         RackspaceCloudFilesFS.authurl = self.options.authurl
         RackspaceCloudFilesFS.keystone = self.options.keystone
         RackspaceCloudFilesFS.memcache_hosts = self.options.memcache
-        if self.options.workers > 1 and not self.options.memcache:
-            RackspaceCloudFilesFS.single_cache = False
 
         masquerade = self.config.get('ftpcloudfs', 'masquerade-firewall')
         if masquerade:
@@ -277,9 +257,10 @@ class Main(object):
         except ValueError, errmsg:
             sys.exit('Max connections per IP error: %s' % errmsg)
 
-        ftpd = pyftpdlib.servers.FTPServer((self.options.bind_address,
-                                            self.options.port),
-                                            MyFTPHandler)
+        ftpd = pyftpdlib.servers.MultiprocessFTPServer((self.options.bind_address,
+                                                        self.options.port),
+                                                       MyFTPHandler,
+                                                       )
 
         # set it to unlimited, we use our own checks with a shared dict
         ftpd.max_cons_per_ip = 0
@@ -313,14 +294,9 @@ class Main(object):
 
     def signal_handler(self, signal, frame):
         """ Catch signals and propagate them to child processes """
-        for pid in self._workers:
-            try:
-                os.kill(pid, signal)
-            except:
-                pass
-
         if self.shm_manager:
             self.shm_manager.shutdown()
+            self.shm_manager = None
         self.old_signal_handler(signal, frame)
 
     def main(self):
@@ -338,8 +314,7 @@ class Main(object):
             ftpd.serve_forever()
             return
 
-        start_garbage_collector()
-        daemonContext = self.setup_daemon([ftpd.socket.fileno(),])
+        daemonContext = self.setup_daemon([ftpd.socket.fileno(), ftpd.ioloop.fileno(),])
         with daemonContext:
             self.old_signal_handler = signal.signal(signal.SIGTERM, self.signal_handler)
 
@@ -347,13 +322,6 @@ class Main(object):
             MyFTPHandler.shared_ip_map = self.shm_manager.dict()
             MyFTPHandler.shared_lock = self.shm_manager.Lock()
 
-            for i in range(self.options.workers):
-                pid = os.fork()
-                if pid == 0:
-                    self.pid = os.getpid()
-                    self.pidfile.close()
-                    self.shm_manager = None
-                    break
-                self._workers.append(pid)
             self.setup_log()
             ftpd.serve_forever()
+
