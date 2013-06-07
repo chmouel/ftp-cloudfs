@@ -27,6 +27,7 @@ class MyFTPHandler(FTPHandler):
     dtp_handler = MyDTPHandler
     authorizer = RackspaceCloudAuthorizer()
     max_cons_per_ip = 0
+    use_sendfile = False
 
     @staticmethod
     def abstracted_fs(root, cmd_channel):
