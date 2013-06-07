@@ -29,7 +29,7 @@ REQUIREMENT
 
 - Python >= 2.6
 - python-cloudfiles >= 1.3.0  - http://github.com/rackspace/python-cloudfiles
-- pyftpdlib >= 0.6.0 - http://code.google.com/p/pyftpdlib/
+- pyftpdlib >= 1.2.0 - http://code.google.com/p/pyftpdlib/
 - python-daemon >= 1.6 - http://pypi.python.org/pypi/python-daemon/
 - python-memcache >= 1.45 - http://www.tummy.com/Community/software/python-memcached/
 
