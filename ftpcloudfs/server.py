@@ -8,7 +8,7 @@
 import os
 
 from pyftpdlib.filesystems import AbstractedFS
-from pyftpdlib.authorizers import DummyAuthorizer
+from pyftpdlib.authorizers import DummyAuthorizer, AuthenticationFailed
 
 from fs import CloudFilesFS
 
@@ -43,11 +43,11 @@ class RackspaceCloudAuthorizer(DummyAuthorizer):
         try:
             cffs = RackspaceCloudFilesFS(username, password)
         except EnvironmentError, e:
-            handler.logerror("Failed to authenticate user %s: %s" % (username, e))
-            return False
+            msg = "Failed to authenticate user %s: %s" % (username, e)
+            handler.logerror(msg)
+            raise AuthenticationFailed(msg)
         self.abstracted_fs_for_user[username] = cffs
         handler.log("Authentication validated for user %s" % username)
-        return True
 
     def get_abstracted_fs(self, username):
         '''Gets an AbstractedFs object for the user.  Raises KeyError
