@@ -10,16 +10,17 @@ FTP Interface to Rackspace Cloud Files and OpenStack Swift
 DESCRIPTION
 ===========
 
-ftp-cloudfs is a ftp server acting as a proxy to `Rackspace Cloud Files`_ or to `OpenStack Swift`_. It allow you to connect via any FTP client to do
-upload/download or create containers.
+ftp-cloudfs is a ftp server acting as a proxy to `Rackspace Cloud Files`_ or to `OpenStack Object Storage (swift)`_.
+It allow you to connect via any FTP client to do upload/download or create containers.
 
 By default the server will bind to port 2021 which allow to be run as
 a non root/administrator user.
 
-.. _OpenStack Swift: http://launchpad.net/swift
+.. _OpenStack Object Storage (Swift): http://launchpad.net/swift
 .. _RackSpace Cloud Files: http://www.rackspace.com/cloud/cloud_hosting_products/files/
 
-It supports pseudo-hierarchical folders/directories as described in the `Rackspace Cloud Files API`_ and the `OpenStack Object Storage API`_.
+It supports pseudo-hierarchical folders/directories as described in the `Rackspace Cloud Files API`_ and
+the `OpenStack Object Storage API`_.
 
 .. _Rackspace Cloud Files API: http://docs.rackspacecloud.com/files/api/cf-devguide-latest.pdf
 .. _OpenStack Object Storage API: http://docs.openstack.org/openstack-object-storage/developer/content/
@@ -30,7 +31,7 @@ REQUIREMENT
 - Python >= 2.6
 - python-cloudfiles >= 1.3.0  - http://github.com/rackspace/python-cloudfiles
 - pyftpdlib >= 1.2.0 - http://code.google.com/p/pyftpdlib/
-- python-daemon >= 1.6 - http://pypi.python.org/pypi/python-daemon/
+- python-daemon >= 1.5.5 - http://pypi.python.org/pypi/python-daemon/
 - python-memcache >= 1.45 - http://www.tummy.com/Community/software/python-memcached/
 
 Optional, only for Auth 2.0 (Keystone):
@@ -41,7 +42,7 @@ Operating Systems
 =================
 
 This has been tested on a Debian testing Linux distribution but it
-should work on any Unices (including MacOSX) as long you have the
+should work on any Unix-like (including MacOS X) as long you have the
 requirement listed above.
 
 It should as well work on Windows but this has been completely
@@ -50,11 +51,11 @@ untested.
 INSTALL
 =======
 
-Use standard setup.py directives ie :
+Use standard setup.py directives ie.::
 
-python setup.py install
+  python setup.py install
 
-Or if you have `pip`_ installed you can just do a ::
+Or if you have `pip`_ installed you can just do a::
 
   pip install ftp-cloudfs
 
@@ -68,7 +69,10 @@ On a Debian/Ubuntu the preferred way to install would be like this::
   pypi-install pyftpdlib
   pypi-install ftp-cloudfs
 
+It has been `included in Debian Jessie`_.
+
 .. _`pip`: http://pip.openplans.org/
+.. _included in Debian Jessie: http://packages.debian.org/jessie/ftp-cloudfs
 
 USAGE
 ======
