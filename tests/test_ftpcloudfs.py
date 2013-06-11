@@ -289,7 +289,7 @@ class FtpCloudFSTest(unittest.TestCase):
     def test_unicode_file(self):
         '''Test unicode file creation'''
         # File names use a utf-8 interface
-        file_name = "Smiley\u263a.txt".encode("utf-8")
+        file_name = u"Smiley\u263a.txt".encode("utf-8")
         self.create_file(file_name, "Hello Moto")
         self.assertEqual(self.cnx.nlst(), [file_name])
         self.cnx.delete(file_name)
@@ -297,14 +297,14 @@ class FtpCloudFSTest(unittest.TestCase):
     def test_unicode_directory(self):
         '''Test unicode directory creation'''
         # File names use a utf-8 interface
-        dir_name = "Smiley\u263aDir".encode("utf-8")
+        dir_name = u"Smiley\u263aDir".encode("utf-8")
         self.cnx.mkd(dir_name)
         self.assertEqual(self.cnx.nlst(), [dir_name])
         self.cnx.rmd(dir_name)
 
     def test_mkdir_container_unicode(self):
         ''' mkdir/chdir/rmdir directory '''
-        directory = "/Smiley\u263aContainer".encode("utf-8")
+        directory = u"/Smiley\u263aContainer".encode("utf-8")
         self.assertEqual(self.cnx.mkd(directory), directory)
         self.assertEqual(self.cnx.cwd(directory),
                          '250 "%s" is the current directory.' % (directory))
