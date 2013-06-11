@@ -18,6 +18,7 @@ from chunkobject import ChunkObject
 from errors import IOSError
 import posixpath
 from constants import cloudfiles_api_timeout
+from utils import smart_str
 from functools import wraps
 import memcache
 try:
@@ -119,18 +120,18 @@ def translate_cloudfiles_error(fn):
             return fn(*args, **kwargs)
         except (cloudfiles.errors.NoSuchContainer,
                 cloudfiles.errors.NoSuchObject), e:
-            raise IOSError(ENOENT, 'Not found: %s' % e)
+            raise IOSError(ENOENT, 'Not found: %s' % smart_str(e))
         except cloudfiles.errors.ContainerNotEmpty, e:
-            raise IOSError(ENOTEMPTY, 'Directory not empty: %s' % e)
+            raise IOSError(ENOTEMPTY, 'Directory not empty: %s' % smart_str(e))
         except cloudfiles.errors.ResponseError, e:
             log("Response error: %s" % e)
             # FIXME make some attempt to raise different errors on e.status
-            raise IOSError(EPERM, 'Operation not permitted: %s' % e)
+            raise IOSError(EPERM, 'Operation not permitted: %s' % smart_str(e))
         except (cloudfiles.errors.AuthenticationError,
                 cloudfiles.errors.AuthenticationFailed,
                 cloudfiles.errors.ContainerNotPublic), e:
             log("Authentication error: %s" % e)
-            raise IOSError(EPERM, 'Operation not permitted: %s' % e)
+            raise IOSError(EPERM, 'Operation not permitted: %s' % smart_str(e))
         except (cloudfiles.errors.CDNNotEnabled,
                 cloudfiles.errors.IncompleteSend,
                 cloudfiles.errors.InvalidContainerName,
@@ -139,7 +140,7 @@ def translate_cloudfiles_error(fn):
                 cloudfiles.errors.InvalidObjectName,
                 cloudfiles.errors.InvalidObjectSize,
                 cloudfiles.errors.InvalidUrl), e:
-            log("Unexpected cloudfiles error: %s" % e)
+            log("Unexpected cloudfiles error: %s" % smart_str(e))
             raise IOSError(EIO, 'Unexpected cloudfiles error')
     return wrapper
 
@@ -265,7 +266,7 @@ class ListDirCache(object):
         logging.debug("cache key for %r" % [self.cffs.authurl, self.cffs.username, index])
         if not hasattr(self, "_key_base"):
             self._key_base = md5("%s%s" % (self.cffs.authurl, self.cffs.username)).hexdigest()
-        return "%s-%s" % (self._key_base, md5(index).hexdigest())
+        return "%s-%s" % (self._key_base, md5(index.encode("utf-8")).hexdigest())
 
     def flush(self, path=None):
         '''Flush the listdir cache'''
@@ -301,6 +302,8 @@ class ListDirCache(object):
 
     def listdir_container(self, cache, container, path=""):
         '''Fills cache with the list dir of the container'''
+        container = smart_str(container)
+        path = smart_str(path)
         logging.debug("listdir container %r path %r" % (container, path))
         cnt = self.cffs._get_container(container)
         if path:
@@ -424,7 +427,7 @@ class ListDirCache(object):
             self.listdir(directory)
         if path != "/":
             try:
-                stat_info = self.cache[leaf]
+                stat_info = self.cache[smart_str(leaf)]
             except KeyError:
                 logging.debug("Didn't find %r in directory listing" % leaf)
                 # it can be a container and the user doesn't have
@@ -591,7 +594,7 @@ class CloudFilesFS(object):
         '''List a directory, raise OSError on error'''
         path = self.abspath(path)
         logging.debug("listdir %r" % path)
-        list_dir = map(lambda s: s.decode('utf-8', 'strict'), self._listdir_cache.listdir(path))
+        list_dir = map(lambda x: unicode(x, 'utf-8'), self._listdir_cache.listdir(path))
         return list_dir
 
     @translate_cloudfiles_error
@@ -601,8 +604,7 @@ class CloudFilesFS(object):
         (leafname, stat_result)'''
         path = self.abspath(path)
         logging.debug("listdir_with_stat %r" % path)
-        list_dir = [(name.decode('utf-8', 'strict'), stats) for name, stats in self._listdir_cache.listdir_with_stat(path)]
-        return list_dir
+        return [(unicode(name, 'utf-8)'), stat) for name, stat in self._listdir_cache.listdir_with_stat(path)]
 
     @translate_cloudfiles_error
     def rmdir(self, path):
