@@ -592,7 +592,7 @@ class CloudFilesFS(object):
         path = self.abspath(path)
         logging.debug("listdir %r" % path)
         list_dir = map(lambda s: s.decode('utf-8', 'strict'), self._listdir_cache.listdir(path))
-        return map(unicode, list_dir)
+        return list_dir
 
     @translate_cloudfiles_error
     def listdir_with_stat(self, path):
@@ -601,8 +601,8 @@ class CloudFilesFS(object):
         (leafname, stat_result)'''
         path = self.abspath(path)
         logging.debug("listdir_with_stat %r" % path)
-        list_dir = map(lambda s: s.decode('utf-8', 'strict'), self._listdir_cache.listdir_with_stat(path))
-        return map(unicode, list_dir)
+        list_dir = [(name.decode('utf-8', 'strict'), stats) for name, stats in self._listdir_cache.listdir_with_stat(path)]
+        return list_dir
 
     @translate_cloudfiles_error
     def rmdir(self, path):
