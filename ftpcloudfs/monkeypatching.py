@@ -94,11 +94,6 @@ class MyFTPHandler(FTPHandler):
 
         FTPHandler.close(self)
 
-    def log_cmd(self, cmd, arg, respcode, respstr):
-        """
-        We use the same format pyftpdlib is using, but we want to log more commands.
-        """
-        if cmd in ("ABOR", "APPE", "DELE", "RMD", "RNFR", "RNTO", "RETR", "STOR", "MKD"):
-            line = '"%s" %s' % (' '.join([cmd, str(arg)]).strip(), respcode)
-            self.log(line)
+    # We want to log more commands.
+    log_cmds_list = ["ABOR", "APPE", "DELE", "RMD", "RNFR", "RNTO", "RETR", "STOR", "MKD",]
 
