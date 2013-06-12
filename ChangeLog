@@ -1,3 +1,13 @@
+2013-06-12 Juan J. Martinez <juan@memset.com>
+
+ * 0.21
+  Port to pyftpdlib 1.2.0
+  - Using pyftpdlib's MultiprocessFTPServer instead of our pre-fork model.
+  - 'workers' configuration token has been removed (it had no effect in new pyftpdlib).
+  - fully converted to use unicode (pyftpdlib requirement).
+
+ IMPORTANT: this is the last release supporting python-cloudfs.
+
 2013-03-15 Juan J. Martinez <juan@memset.com>
 
   * 0.20.1
