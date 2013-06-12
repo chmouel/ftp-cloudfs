@@ -117,7 +117,7 @@ The defaults can be changed using a configuration file (by default in
 CACHE MANAGEMENT
 ================
 
-Both `Rackspace Cloud Files`_ and `OpenStack Swift`_ are a object storages
+Both `Rackspace Cloud Files`_ and `OpenStack Object Storage (Swift)`_ are a object storages
 and not real file systems. This proxy simulates enough file system functionality
 to be used over FTP, but it has a performance hit.
 
