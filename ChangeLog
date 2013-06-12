@@ -6,7 +6,7 @@
   - 'workers' configuration token has been removed (it had no effect in new pyftpdlib).
   - fully converted to use unicode (pyftpdlib requirement).
 
- IMPORTANT: this is the last release supporting python-cloudfs.
+ IMPORTANT: this is the last release supporting python-cloudfiles.
 
 2013-03-15 Juan J. Martinez <juan@memset.com>
 
