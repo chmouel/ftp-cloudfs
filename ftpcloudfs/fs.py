@@ -266,7 +266,7 @@ class ListDirCache(object):
         logging.debug("cache key for %r" % [self.cffs.authurl, self.cffs.username, index])
         if not hasattr(self, "_key_base"):
             self._key_base = md5("%s%s" % (self.cffs.authurl, self.cffs.username)).hexdigest()
-        return "%s-%s" % (self._key_base, md5(index.encode("utf-8")).hexdigest())
+        return "%s-%s" % (self._key_base, md5(smart_str(index)).hexdigest())
 
     def flush(self, path=None):
         '''Flush the listdir cache'''
