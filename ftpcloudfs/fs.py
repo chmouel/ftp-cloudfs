@@ -484,6 +484,9 @@ class CloudFilesFS(object):
         '''
         Authenticates and opens the connection
         '''
+        if not username or not api_key:
+            raise cloudfiles.errors.AuthenticationError("username/password required")
+
         # Thanks the way get_connection works we don't have to check if
         # the python api version is accepting servicenet keyword
         kwargs = dict(servicenet=self.servicenet)
