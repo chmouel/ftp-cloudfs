@@ -1,3 +1,13 @@
+2013-06-19 Juan J. Martinez <juan@memset.com>
+
+ * 0.21.1
+  Minor fixes and cache regression 
+  - Improved logging for socket errors (timeouts mainly)
+  - Fixed cache regression that abused cache flushes when using Memcache
+  - Proper handling of no user/password logins
+
+ IMPORTANT: this is the last release supporting python-cloudfiles.
+
 2013-06-12 Juan J. Martinez <juan@memset.com>
 
  * 0.21
@@ -5,8 +15,6 @@
   - Using pyftpdlib's MultiprocessFTPServer instead of our pre-fork model.
   - 'workers' configuration token has been removed (it had no effect in new pyftpdlib).
   - fully converted to use unicode (pyftpdlib requirement).
-
- IMPORTANT: this is the last release supporting python-cloudfiles.
 
 2013-03-15 Juan J. Martinez <juan@memset.com>
 
