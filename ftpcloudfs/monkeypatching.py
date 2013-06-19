@@ -1,3 +1,5 @@
+import sys
+import socket
 from pyftpdlib.handlers import DTPHandler, FTPHandler, _strerror
 from ftpcloudfs.utils import smart_str
 from server import RackspaceCloudAuthorizer
@@ -76,6 +78,17 @@ class MyFTPHandler(FTPHandler):
                 return
 
         FTPHandler.handle(self)
+
+    def handle_error(self):
+        """Catch some 'expected' exceptions not processed by FTPHandler/AsyncChat"""
+        # this is aesthetic only
+        t, v, _ = sys.exc_info()
+        if t == socket.error:
+            self.log("Connection error: %s" % v)
+            self.handle_close()
+            return
+
+        FTPHandler.handle_error(self)
 
     def close(self):
         """Remove the ip from the shared map before calling close"""
