@@ -45,11 +45,6 @@ class Main(object):
     def setup_log(self):
         ''' Setup Logging '''
 
-        def log(log_type, pid, msg):
-            """
-            Dummy function.
-            """
-
         if self.options.log_level:
             self.options.log_level = logging.DEBUG
         else:
