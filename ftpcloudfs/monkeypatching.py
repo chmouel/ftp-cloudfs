@@ -39,7 +39,7 @@ class MyFTPHandler(FTPHandler):
         return cffs
 
     def process_command(self, cmd, *args, **kwargs):
-        '''Flush the FS cache with every new FTP command'''
+        '''Flush the FS cache with every new FTP command (non-shared cache)'''
         if self.fs:
             if self.fs.memcache_hosts is None:
                 self.fs.flush()
