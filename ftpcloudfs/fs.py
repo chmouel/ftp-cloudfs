@@ -272,13 +272,17 @@ class ListDirCache(object):
         '''Flush the listdir cache'''
         logging.debug("cache flush, current path: %s request: %s" % (self.path, path))
         if self.memcache:
-            if self.path is not None:
-                logging.debug("flushing memcache for %r" % self.path)
-                self.memcache.delete(self.key(self.path))
-            if path and self.path != path:
+            if path is not None:
                 logging.debug("flushing memcache for %r" % path)
                 self.memcache.delete(self.key(path))
-        self.cache = None
+                if self.path == path:
+                    self.cache = None
+            elif self.path is not None:
+                logging.debug("flushing memcache for %r" % self.path)
+                self.memcache.delete(self.key(path))
+                self.cache = None
+        else:
+            self.cache = None
 
     def _make_stat(self, last_modified=None, content_type="application/directory", count=1, bytes=0, **kwargs):
         '''Make a stat object from the parameters passed in from'''
