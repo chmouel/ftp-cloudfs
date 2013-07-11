@@ -25,6 +25,10 @@ try:
     from hashlib import md5
 except ImportError:
     from md5 import md5
+try:
+    import json
+except ImportError:
+    import simplejson as json
 
 __all__ = ['CloudFilesFS']
 
@@ -241,6 +245,21 @@ class CloudFilesFD(object):
         else:
             raise IOSError(EPERM, "Seek not available for write operations")
 
+class CacheEncoder(json.JSONEncoder):
+    """JSONEncoder to encode the os.stat_result values into a list"""
+    def default(self, obj):
+        if isinstance(obj, os.stat_result):
+            return tuple(obj)
+        return json.JSONEncoder.default(self, obj)
+
+def serialize(obj):
+    '''Serialize a cache dict into a JSON object'''
+    return json.dumps(obj, cls=CacheEncoder)
+
+def unserialize(js):
+    '''Unserialize a JSON object into a cache dict'''
+    return dict(((smart_str(key), os.stat_result(value)) for key, value in json.loads(js).iteritems()))
+
 class ListDirCache(object):
     '''
     Cache for listdir.  This is to cache the very common case when we
@@ -375,6 +394,7 @@ class ListDirCache(object):
         if self.memcache:
             cache = self.memcache.get(self.key(path))
             if cache:
+                cache = unserialize(cache)
                 logging.debug("memcache hit %r" % self.key(path))
             else:
                 logging.debug("memcache miss %r" % self.key(path))
@@ -386,7 +406,7 @@ class ListDirCache(object):
                 container, obj = parse_fspath(path)
                 self.listdir_container(cache, container, obj)
             if self.memcache:
-                if self.memcache.set(self.key(path), cache, self.MAX_CACHE_TIME, min_compress_len=self.MIN_COMPRESS_LEN):
+                if self.memcache.set(self.key(path), serialize(cache), self.MAX_CACHE_TIME, min_compress_len=self.MIN_COMPRESS_LEN):
                     logging.debug("memcache stored %r" % self.key(path))
                 else:
                     logging.warning("Failed to store the cache")
@@ -410,6 +430,7 @@ class ListDirCache(object):
             if self.memcache:
                 cache = self.memcache.get(self.key(path))
                 if cache:
+                    cache = unserialize(cache)
                     logging.debug("memcache hit %r" % self.key(path))
                     self.cache = cache
                     self.path = path
