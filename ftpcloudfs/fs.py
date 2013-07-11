@@ -385,8 +385,10 @@ class ListDirCache(object):
                 container, obj = parse_fspath(path)
                 self.listdir_container(cache, container, obj)
             if self.memcache:
-                self.memcache.set(self.key(path), cache, self.MAX_CACHE_TIME)
-                logging.debug("memcache stored %r" % self.key(path))
+                if self.memcache.set(self.key(path), cache, self.MAX_CACHE_TIME):
+                    logging.debug("memcache stored %r" % self.key(path))
+                else:
+                    logging.warning("Failed to store the cache")
         self.cache = cache
         self.path = path
         self.when = time.time()
