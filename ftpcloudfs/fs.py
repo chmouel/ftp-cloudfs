@@ -249,6 +249,7 @@ class ListDirCache(object):
     own caching here to avoid the stat calls each making a connection.
     '''
     MAX_CACHE_TIME = 10         # seconds to cache the listdir for
+    MIN_COMPRESS_LEN = 4096     # min length in bytes to compress cache entries
     memcache = None
 
     def __init__(self, cffs):
@@ -385,7 +386,7 @@ class ListDirCache(object):
                 container, obj = parse_fspath(path)
                 self.listdir_container(cache, container, obj)
             if self.memcache:
-                if self.memcache.set(self.key(path), cache, self.MAX_CACHE_TIME):
+                if self.memcache.set(self.key(path), cache, self.MAX_CACHE_TIME, min_compress_len=self.MIN_COMPRESS_LEN):
                     logging.debug("memcache stored %r" % self.key(path))
                 else:
                     logging.warning("Failed to store the cache")
