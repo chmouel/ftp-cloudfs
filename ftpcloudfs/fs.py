@@ -23,7 +23,7 @@ from functools import wraps
 import memcache
 try:
     from hashlib import md5
-except:
+except ImportError:
     from md5 import md5
 
 __all__ = ['CloudFilesFS']
