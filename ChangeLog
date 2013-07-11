@@ -1,3 +1,14 @@
+2013-07-11 Juan J. Martinez <juan@memset.com>
+
+ * 0.22
+  Cache performance improvements
+  - Cache management has been improved limiting the calls to memcache
+  - Cache entries are now serialized using JSON before being stores in memcache
+    (memcache uses pickle by default)
+  - Enabled cache compression
+
+ IMPORTANT: this is the last release supporting python-cloudfiles.
+
 2013-06-19 Juan J. Martinez <juan@memset.com>
 
  * 0.21.1
@@ -5,8 +16,6 @@
   - Improved logging for socket errors (timeouts mainly)
   - Fixed cache regression that abused cache flushes when using Memcache
   - Proper handling of no user/password logins
-
- IMPORTANT: this is the last release supporting python-cloudfiles.
 
 2013-06-12 Juan J. Martinez <juan@memset.com>
 
