@@ -405,16 +405,14 @@ class ListDirCache(object):
 
     def valid(self, path):
         '''Check the cache is valid for the container and directory path'''
-        if self.memcache:
-            cache = self.memcache.get(self.key(path))
-            if cache:
-                logging.debug("memcache hit %r" % self.key(path))
-                self.cache = cache
-                self.path = path
-                return True
-        if not self.cache:
-            return False
-        if self.path != path:
+        if not self.cache or self.path != path:
+            if self.memcache:
+                cache = self.memcache.get(self.key(path))
+                if cache:
+                    logging.debug("memcache hit %r" % self.key(path))
+                    self.cache = cache
+                    self.path = path
+                    return True
             return False
         age = time.time() - self.when
         return age < self.MAX_CACHE_TIME
