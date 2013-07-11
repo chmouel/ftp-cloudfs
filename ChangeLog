@@ -3,7 +3,7 @@
  * 0.22
   Cache performance improvements
   - Cache management has been improved limiting the calls to memcache
-  - Cache entries are now serialized using JSON before being stores in memcache
+  - Cache entries are now serialized using JSON before being stored in memcache
     (memcache uses pickle by default)
   - Enabled cache compression
 
