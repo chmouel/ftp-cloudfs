@@ -2,35 +2,35 @@
 import unittest
 import os
 import sys
-import ftplib
-import StringIO
 from datetime import datetime
-import cloudfiles
-from ftpcloudfs.fs import CloudFilesFS, ListDirCache
+from swiftclient import client
+from ftpcloudfs.fs import ObjectStorageFS, ListDirCache
 from ftpcloudfs.errors import IOSError
 
-import logging
+#import logging
 #logging.getLogger().setLevel(logging.DEBUG)
 #logging.basicConfig(level=logging.DEBUG)
 
-class CloudFilesFSTest(unittest.TestCase):
-    '''CloudFilesFS Test'''
+class ObjectStorageFSTest(unittest.TestCase):
+    '''ObjectStorageFS Tests'''
 
     def setUp(self):
         if not hasattr(self, 'username'):
             cls = self.__class__
-            if not all(['RCLOUD_API_KEY' in os.environ,
-                        'RCLOUD_API_USER' in os.environ]):
-                print "env RCLOUD_API_USER or RCLOUD_API_KEY not found."
+            if not all(['OS_API_KEY' in os.environ,
+                        'OS_API_USER' in os.environ,
+                        'OS_AUTH_URL' in os.environ,
+                        ]):
+                print "env OS_API_USER/OS_API_KEY/OS_AUTH_URL not found."
                 sys.exit(1)
-            cls.username = os.environ['RCLOUD_API_USER']
-            cls.api_key = os.environ['RCLOUD_API_KEY']
-            cls.auth_url = os.environ.get('RCLOUD_AUTH_URL')
-            cls.cnx = CloudFilesFS(self.username, self.api_key, authurl=self.auth_url)
-            cls.conn = cloudfiles.get_connection(self.username, self.api_key, authurl=self.auth_url)
-        self.cnx.mkdir("/ftpcloudfs_testing")
-        self.cnx.chdir("/ftpcloudfs_testing")
-        self.container = self.conn.get_container('ftpcloudfs_testing')
+            cls.username = os.environ['OS_API_USER']
+            cls.api_key = os.environ['OS_API_KEY']
+            cls.auth_url = os.environ.get('OS_AUTH_URL')
+            cls.cnx = ObjectStorageFS(self.username, self.api_key, self.auth_url)
+            cls.conn = client.Connection(user=self.username, key=self.api_key, authurl=self.auth_url)
+        self.container = "ftpcloudfs_testing"
+        self.cnx.mkdir("/%s" % self.container)
+        self.cnx.chdir("/%s" % self.container)
 
     def create_file(self, path, contents):
         '''Create path with contents'''
@@ -86,7 +86,7 @@ class CloudFilesFSTest(unittest.TestCase):
         content_string = "Hello Moto"
         self.create_file("testfile.txt", content_string)
         self.assertEquals(self.cnx.getsize("testfile.txt"), len(content_string))
-        content = self.read_file("/ftpcloudfs_testing/potato/testfile.txt")
+        content = self.read_file("/%s/potato/testfile.txt" % self.container)
         self.assertEqual(content, content_string)
         self.cnx.remove("testfile.txt")
         self.cnx.chdir("..")
@@ -101,7 +101,7 @@ class CloudFilesFSTest(unittest.TestCase):
     def test_chdir_to_a_file(self):
         ''' chdir to a file '''
         self.create_file("testfile.txt", "Hello Moto")
-        self.assertRaises(EnvironmentError, self.cnx.chdir, "/ftpcloudfs_testing/testfile.txt")
+        self.assertRaises(EnvironmentError, self.cnx.chdir, "/%s/testfile.txt" % self.container)
         self.cnx.remove("testfile.txt")
 
     def test_chdir_to_slash(self):
@@ -115,7 +115,7 @@ class CloudFilesFSTest(unittest.TestCase):
     def test_chdir_to_nonexistent_directory(self):
         ''' chdir to nonexistend directory'''
         self.assertRaises(EnvironmentError, self.cnx.chdir, "i_dont_exist")
-        self.assertRaises(EnvironmentError, self.cnx.chdir, "/ftpcloudfs_testing/i_dont_exist")
+        self.assertRaises(EnvironmentError, self.cnx.chdir, "/%s/i_dont_exist" % self.container)
 
     def test_listdir_root(self):
         ''' list root directory '''
@@ -123,13 +123,13 @@ class CloudFilesFSTest(unittest.TestCase):
         dt = abs(datetime.utcfromtimestamp(self.cnx.getmtime("/")) - datetime.utcnow())
         self.assertTrue(dt.seconds < 60)
         ls = self.cnx.listdir(".")
-        self.assertTrue('ftpcloudfs_testing' in ls)
-        dt = abs(datetime.utcfromtimestamp(self.cnx.getmtime("ftpcloudfs_testing")) - datetime.utcnow())
+        self.assertTrue(self.container in ls)
+        dt = abs(datetime.utcfromtimestamp(self.cnx.getmtime(self.container)) - datetime.utcnow())
         self.assertTrue(dt.seconds < 60)
         self.assertTrue('potato' not in ls)
         self.cnx.mkdir("potato")
         ls = self.cnx.listdir(".")
-        self.assertTrue('ftpcloudfs_testing' in ls)
+        self.assertTrue(self.container in ls)
         self.assertTrue('potato' in ls)
         self.cnx.rmdir("potato")
 
@@ -213,7 +213,7 @@ class CloudFilesFSTest(unittest.TestCase):
         '''rename a directory into a file - shouldn't work'''
         content_string = "Hello Moto"
         self.create_file("testfile.txt", content_string)
-        self.assertRaises(EnvironmentError, self.cnx.rename, "/ftpcloudfs_testing", "testfile.txt")
+        self.assertRaises(EnvironmentError, self.cnx.rename, "/%s" % self.container, "testfile.txt")
         self.cnx.remove("testfile.txt")
 
     def test_rename_directory_into_directory(self):
@@ -240,13 +240,13 @@ class CloudFilesFSTest(unittest.TestCase):
         '''rename a directory into itself'''
         self.cnx.mkdir("potato")
         self.assertEquals(self.cnx.listdir("potato"), [])
-        self.cnx.rename("potato", "/ftpcloudfs_testing")
+        self.cnx.rename("potato", "/%s" % self.container)
         self.assertEquals(self.cnx.listdir("potato"), [])
-        self.cnx.rename("potato", "/ftpcloudfs_testing/potato")
+        self.cnx.rename("potato", "/%s/potato" % self.container)
         self.assertEquals(self.cnx.listdir("potato"), [])
         self.cnx.rename("potato", "potato")
         self.assertEquals(self.cnx.listdir("potato"), [])
-        self.cnx.rename("/ftpcloudfs_testing/potato", ".")
+        self.cnx.rename("/%s/potato" % self.container, ".")
         self.assertEquals(self.cnx.listdir("potato"), [])
         self.cnx.rmdir("potato")
 
@@ -306,21 +306,9 @@ class CloudFilesFSTest(unittest.TestCase):
     def test_fakedir(self):
         '''Make some fake directories and test'''
 
-        obj1 = self.container.create_object("test1.txt")
-        obj1.content_type = "text/plain"
-        obj1.write("Hello Moto")
-
-        obj2 = self.container.create_object("potato/test2.txt")
-        obj2.content_type = "text/plain"
-        obj2.write("Hello Moto")
-
-        obj3 = self.container.create_object("potato/sausage/test3.txt")
-        obj3.content_type = "text/plain"
-        obj3.write("Hello Moto")
-
-        obj4 = self.container.create_object("potato/sausage/test4.txt")
-        obj4.content_type = "text/plain"
-        obj4.write("Hello Moto")
+        objs  = [ "test1.txt", "potato/test2.txt", "potato/sausage/test3.txt", "potato/sausage/test4.txt", ]
+        for obj in objs:
+            self.conn.put_object(self.container, obj, content_type="text/plain", contents="Hello Moto")
 
         self.assertEqual(self.cnx.listdir("."), ["potato", "test1.txt"])
         self.assertEqual(self.cnx.listdir("potato"), ["sausage","test2.txt"])
@@ -337,33 +325,27 @@ class CloudFilesFSTest(unittest.TestCase):
 
         self.cnx.chdir("../..")
 
-        self.container.delete_object(obj1.name)
-        self.container.delete_object(obj2.name)
-        self.container.delete_object(obj3.name)
-        self.container.delete_object(obj4.name)
+        for obj in objs:
+            self.conn.delete_object(self.container, obj)
 
         self.assertEqual(self.cnx.listdir("."), [])
 
     def test_md5(self):
-        obj1 = self.container.create_object("test1.txt")
-        obj1.content_type = "text/plain"
-        obj1.write("Hello Moto")
+        self.conn.put_object(self.container, "test1.txt", content_type="text/plain", contents="Hello Moto")
         self.assertEquals(self.cnx.md5("test1.txt"),"0d933ae488fd55cc6bdeafffbaabf0c4")
         self.cnx.remove("test1.txt")
         self.assertRaises(EnvironmentError, self.cnx.md5, "/")
-        self.assertRaises(EnvironmentError, self.cnx.md5, "/ftpcloudfs_testing")
-        self.cnx.mkdir("/ftpcloudfs_testing/sausage")
-        self.assertRaises(EnvironmentError, self.cnx.md5, "/ftpcloudfs_testing/sausage")
-        self.cnx.rmdir("/ftpcloudfs_testing/sausage")
+        self.assertRaises(EnvironmentError, self.cnx.md5, "/%s" % self.container)
+        self.cnx.mkdir("/%s/sausage" % self.container)
+        self.assertRaises(EnvironmentError, self.cnx.md5, "/%s/sausage" % self.container)
+        self.cnx.rmdir("/%s/sausage" % self.container)
 
     def test_listdir_manifest(self):
         ''' list directory including a manifest file '''
         content_string = "0" * 1024
         for i in range(1, 5):
             self.create_file("testfile.part/%d" % i, content_string)
-        obj = self.container.create_object("testfile")
-        obj.manifest = '%s/testfile.part' % self.container.name
-        obj.sync_manifest()
+        self.conn.put_object(self.container, "testfile", contents=None, headers={ "x-object-manifest": '%s/testfile.part' % self.container })
         self.assertEqual(self.cnx.listdir("."), ["testfile", "testfile.part"])
         self.assertEqual(self.cnx.getsize("testfile"), 4096)
         self.cnx.remove("testfile")
@@ -463,20 +445,27 @@ class CloudFilesFSTest(unittest.TestCase):
 
     def tearDown(self):
         # Delete eveything from the container using the API
-        fails = self.container.list_objects()
+        _, fails = self.conn.get_container(self.container)
         for obj in fails:
-            self.container.delete_object(obj)
-        self.cnx.rmdir("/ftpcloudfs_testing")
+            self.conn.delete_object(self.container, obj["name"])
+        self.cnx.rmdir("/%s" % self.container)
         self.assertEquals(fails, [], "The test failed to clean up after itself leaving these objects: %r" % fails)
 
 
-class MockupContainer(object):
-    '''Mockup object to simulate a CF container.'''
-    def __init__(self, container, num_objects):
-        self.container = container
+class MockupConnection(object):
+    '''Mockup object to simulate a CF connection.'''
+    def __init__(self, num_objects):
         self.num_objects = num_objects
 
-    def list_objects_info(self, prefix=None, delimiter=None, marker=None, limit=10000):
+    def list_containers_info(self):
+        return [dict(count=self.num_objects, bytes=1024*self.num_objects, name='container'),]
+
+    def get_account(self):
+        return {}, [{ "name": "container", "count": self.num_objects, "bytes": self.num_objects*1024 },]
+
+    def get_container(self, container, prefix=None, delimiter=None, marker=None, limit=10000):
+        if container != 'container':
+            raise client.ClientException("Not found", http_status=404)
 
         start = 0
         if marker:
@@ -494,25 +483,12 @@ class MockupContainer(object):
         if end > limit:
             end = limit
 
-        return [dict(bytes=1024, content_type='text/plain',
-                     hash='c644eacf6e9c21c7d2cca3ce8bb0ec13',
-                     last_modified='2012-06-20T00:00:00.000000',
-                     name='object%s.txt' % i) for i in xrange(start, start+end)]
+        return {}, [dict(bytes=1024, content_type='text/plain',
+                         hash='c644eacf6e9c21c7d2cca3ce8bb0ec13',
+                         last_modified='2012-06-20T00:00:00.000000',
+                         name='object%s.txt' % i) for i in xrange(start, start+end)]
 
-class MockupConnection(object):
-    '''Mockup object to simulate a CF connection.'''
-    def __init__(self, num_objects):
-        self.num_objects = num_objects
-
-    def list_containers_info(self):
-        return [dict(count=self.num_objects, bytes=1024*self.num_objects, name='container'),]
-
-    def get_container(self, container):
-        if container != 'container':
-            raise cloudfiles.errors.NoSuchContainer()
-        return MoclupContainer(container)
-
-class MockupCfFs(object):
+class MockupOSFS(object):
     '''Mockup object to simulate a CFFS.'''
     memcache_hosts = None
     auth_url = 'https://auth.service.fake/v1'
@@ -520,14 +496,15 @@ class MockupCfFs(object):
 
     def __init__(self, num_objects):
         self.num_objects = num_objects
-        self.connection = MockupConnection(num_objects)
+        self.conn = MockupConnection(num_objects)
 
-    def _get_container(self, container):
-        return MockupContainer(container, self.num_objects)
+    def _container_exists(self, container):
+        if container != 'container':
+            raise client.ClientException("Not found", http_status=404)
 
 class ListDirTest(unittest.TestCase):
     '''
-    CloudFilesFS cache Tests.
+    ObjectStorageFS cache Tests.
 
     These tests use the Mockup* objects because some of the tests would require
     creating/deleting too many objects to run the test over the real storage.
@@ -535,7 +512,7 @@ class ListDirTest(unittest.TestCase):
 
     def test_listdir(self):
         """Test listdir, less than 10000 (limit) objects"""
-        lc = ListDirCache(MockupCfFs(100))
+        lc = ListDirCache(MockupOSFS(100))
 
         ld = lc.listdir('/')
         self.assertEqual(len(ld), 1)
@@ -547,7 +524,7 @@ class ListDirTest(unittest.TestCase):
 
     def test_listdir_marker(self):
         """Test listdir, more than 10000 (limit) objects"""
-        lc = ListDirCache(MockupCfFs(10100))
+        lc = ListDirCache(MockupOSFS(10100))
 
         ld = lc.listdir('/container')
         self.assertEqual(len(ld), 10100)

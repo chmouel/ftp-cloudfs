@@ -1,3 +1,17 @@
+2013-08-?? Juan J. Martinez <juan@memset.com>
+
+ * 0.23
+  ftpcloudfs ported from python-cloudfiles to python-swiftclient
+  - Using python-swiftfiles instead of the abandoned python-cloudfiles
+  - The code has been tidied up for better maintainability and there are 
+    some performance improvements. The functionality should be the same,
+	but please test this release before upgrading your production systems.
+
+  From now on the project will focus on OpenStack Object Storage (swift);
+  although Rackspace Cloud Files is still compatible.
+
+  If you want to keep using python-cloudfiles, please use ftp-cloudfs 0.22.
+
 2013-07-11 Juan J. Martinez <juan@memset.com>
 
  * 0.22

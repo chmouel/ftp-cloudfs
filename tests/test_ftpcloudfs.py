@@ -6,33 +6,38 @@ import ftplib
 import StringIO
 from datetime import datetime
 from time import sleep
-import cloudfiles
+from swiftclient import client
 
-from ftpcloudfs.constants import default_address, default_port, cloudfiles_api_timeout
+from ftpcloudfs.constants import default_address, default_port
 from ftpcloudfs.fs import ListDirCache
 
+#import logging
+#logging.getLogger().setLevel(logging.DEBUG)
+#logging.basicConfig(level=logging.DEBUG)
 
-class FtpCloudFSTest(unittest.TestCase):
+class FtpObjectStorageFSTest(unittest.TestCase):
     ''' FTP Cloud FS main test '''
 
     def setUp(self):
-        if not all(['RCLOUD_API_KEY' in os.environ,
-                    'RCLOUD_API_USER' in os.environ]):
-            print "env RCLOUD_API_USER or RCLOUD_API_KEY not found."
+        if not all(['OS_API_KEY' in os.environ,
+                    'OS_API_USER' in os.environ,
+                    'OS_AUTH_URL' in os.environ,
+                    ]):
+            print "env OS_API_USER/OS_API_KEY/OS_AUTH_URL not found."
             sys.exit(1)
 
-        self.username = os.environ['RCLOUD_API_USER']
-        self.api_key = os.environ['RCLOUD_API_KEY']
-        self.auth_url = os.environ.get('RCLOUD_AUTH_URL')
+        self.username = os.environ['OS_API_USER']
+        self.api_key = os.environ['OS_API_KEY']
+        self.auth_url = os.environ.get('OS_AUTH_URL')
         self.cnx = ftplib.FTP()
         self.cnx.host = default_address
         self.cnx.port = default_port
         self.cnx.connect()
         self.cnx.login(self.username, self.api_key)
-        self.cnx.mkd("/ftpcloudfs_testing")
-        self.cnx.cwd("/ftpcloudfs_testing")
-        self.conn = cloudfiles.get_connection(self.username, self.api_key, authurl=self.auth_url, timeout=cloudfiles_api_timeout)
-        self.container = self.conn.get_container('ftpcloudfs_testing')
+        self.container = "ftpcloudfs_testing"
+        self.cnx.mkd("/%s" % self.container)
+        self.cnx.cwd("/%s" % self.container)
+        self.conn = client.Connection(user=self.username, key=self.api_key, authurl=self.auth_url)
 
     def create_file(self, path, contents):
         '''Create path with contents'''
@@ -85,7 +90,7 @@ class FtpCloudFSTest(unittest.TestCase):
         self.create_file("testfile.txt", content_string)
         self.assertEquals(self.cnx.size("testfile.txt"), len(content_string))
         store = StringIO.StringIO()
-        self.cnx.retrbinary("RETR /ftpcloudfs_testing/potato/testfile.txt", store.write)
+        self.cnx.retrbinary("RETR /%s/potato/testfile.txt" % self.container, store.write)
         self.assertEqual(store.getvalue(), content_string)
         self.assertEqual(self.cnx.delete("testfile.txt"), "250 File removed.")
         self.cnx.cwd("..")
@@ -101,7 +106,7 @@ class FtpCloudFSTest(unittest.TestCase):
     def test_chdir_to_a_file(self):
         ''' chdir to a file '''
         self.create_file("testfile.txt", "Hello Moto")
-        self.assertRaises(ftplib.error_perm, self.cnx.cwd, "/ftpcloudfs_testing/testfile.txt")
+        self.assertRaises(ftplib.error_perm, self.cnx.cwd, "/%s/testfile.txt" % self.container)
         self.cnx.delete("testfile.txt")
 
     def test_chdir_to_slash(self):
@@ -115,17 +120,17 @@ class FtpCloudFSTest(unittest.TestCase):
     def test_chdir_to_nonexistent_directory(self):
         ''' chdir to nonexistend directory'''
         self.assertRaises(ftplib.error_perm, self.cnx.cwd, "i_dont_exist")
-        self.assertRaises(ftplib.error_perm, self.cnx.cwd, "/ftpcloudfs_testing/i_dont_exist")
+        self.assertRaises(ftplib.error_perm, self.cnx.cwd, "/%s/i_dont_exist" % self.container)
 
     def test_listdir_root(self):
         ''' list root directory '''
         self.cnx.cwd("/")
         ls = self.cnx.nlst()
-        self.assertTrue('ftpcloudfs_testing' in ls)
+        self.assertTrue(self.container in ls)
         self.assertTrue('potato' not in ls)
         self.cnx.mkd("potato")
         ls = self.cnx.nlst()
-        self.assertTrue('ftpcloudfs_testing' in ls)
+        self.assertTrue(self.container in ls)
         self.assertTrue('potato' in ls)
         self.cnx.rmd("potato")
 
@@ -219,7 +224,7 @@ class FtpCloudFSTest(unittest.TestCase):
         '''rename a directory into a file - shouldn't work'''
         content_string = "Hello Moto"
         self.create_file("testfile.txt", content_string)
-        self.assertRaises(ftplib.error_perm, self.cnx.rename, "/ftpcloudfs_testing", "testfile.txt")
+        self.assertRaises(ftplib.error_perm, self.cnx.rename, "/%s" % self.container, "testfile.txt")
         self.cnx.delete("testfile.txt")
 
     def test_rename_directory_into_directory(self):
@@ -246,13 +251,13 @@ class FtpCloudFSTest(unittest.TestCase):
         '''rename a directory into itself'''
         self.cnx.mkd("potato")
         self.assertEquals(self.cnx.nlst("potato"), [])
-        self.cnx.rename("potato", "/ftpcloudfs_testing")
+        self.cnx.rename("potato", "/%s" % self.container)
         self.assertEquals(self.cnx.nlst("potato"), [])
-        self.cnx.rename("potato", "/ftpcloudfs_testing/potato")
+        self.cnx.rename("potato", "/%s/potato" % self.container)
         self.assertEquals(self.cnx.nlst("potato"), [])
         self.cnx.rename("potato", "potato")
         self.assertEquals(self.cnx.nlst("potato"), [])
-        self.cnx.rename("/ftpcloudfs_testing/potato", ".")
+        self.cnx.rename("/%s/potato" % self.container, ".")
         self.assertEquals(self.cnx.nlst("potato"), [])
         self.cnx.rmd("potato")
 
@@ -313,21 +318,10 @@ class FtpCloudFSTest(unittest.TestCase):
     def test_fakedir(self):
         '''Make some fake directories and test'''
 
-        obj1 = self.container.create_object("test1.txt")
-        obj1.content_type = "text/plain"
-        obj1.write("Hello Moto")
-
-        obj2 = self.container.create_object("potato/test2.txt")
-        obj2.content_type = "text/plain"
-        obj2.write("Hello Moto")
-
-        obj3 = self.container.create_object("potato/sausage/test3.txt")
-        obj3.content_type = "text/plain"
-        obj3.write("Hello Moto")
-
-        obj4 = self.container.create_object("potato/sausage/test4.txt")
-        obj4.content_type = "text/plain"
-        obj4.write("Hello Moto")
+        objs = ["test1.txt", "potato/test2.txt", "potato/sausage/test3.txt",
+                "potato/sausage/test4.txt",]
+        for obj in objs:
+            self.conn.put_object(self.container, obj, content_type="text/plain", contents="Hello Moto")
 
         self.assertEqual(self.cnx.nlst(), ["potato", "test1.txt"])
         self.assertEqual(self.cnx.nlst("potato"), ["sausage","test2.txt"])
@@ -344,10 +338,8 @@ class FtpCloudFSTest(unittest.TestCase):
 
         self.cnx.cwd("../..")
 
-        self.container.delete_object(obj1.name)
-        self.container.delete_object(obj2.name)
-        self.container.delete_object(obj3.name)
-        self.container.delete_object(obj4.name)
+        for obj in objs:
+            self.conn.delete_object(self.container, obj)
 
         sleep(ListDirCache.MAX_CACHE_TIME)
 
@@ -356,19 +348,20 @@ class FtpCloudFSTest(unittest.TestCase):
     def test_md5(self):
         ''' MD5 extension'''
         self.create_file("testfile.txt", "Hello Moto")
-        response = self.cnx.sendcmd("MD5 /ftpcloudfs_testing/testfile.txt")
+        response = self.cnx.sendcmd("MD5 /%s/testfile.txt" % self.container)
         self.cnx.delete("testfile.txt")
-        self.assertEqual(response, '251 "/ftpcloudfs_testing/testfile.txt" 0D933AE488FD55CC6BDEAFFFBAABF0C4')
-        self.assertRaises(ftplib.error_perm, self.cnx.sendcmd, "MD5 /ftpcloudfs_testing")
+        self.assertEqual(response, '251 "/%s/testfile.txt" 0D933AE488FD55CC6BDEAFFFBAABF0C4' % self.container)
+        self.assertRaises(ftplib.error_perm, self.cnx.sendcmd, "MD5 /%s" % self.container)
         self.assertRaises(ftplib.error_perm, self.cnx.sendcmd, "MD5 /")
 
     def tearDown(self):
         # Delete eveything from the container using the API
         self.cnx.close()
-        fails = self.container.list_objects()
+        _, fails = self.conn.get_container(self.container)
         for obj in fails:
-            self.container.delete_object(obj)
-        self.conn.delete_container("ftpcloudfs_testing")
+            if "name" in obj:
+                self.conn.delete_object(self.container, obj["name"])
+        self.conn.delete_container(self.container)
         self.assertEquals(fails, [], "The test failed to clean up after itself leaving these objects: %r" % fails)
 
 if __name__ == '__main__':

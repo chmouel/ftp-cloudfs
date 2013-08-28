@@ -4,13 +4,16 @@
 [ftpcloudfs]
 
 # FTP banner (%v version, %f ftp handler version)
-# banner = Rackspace Cloud Files %v using pyftpdlib %f ready.
+# banner = ftp-cloudfs %v using pyftpdlib %f ready.
 
 # Port to bind.
 # port = 2021
 
 # Address to bind.
 # bind-address = 127.0.0.1
+
+# Authentication URL (required)
+# auth-url = (empty)
 
 # DEPRECATED: Number of workers to use (no effect)
 # workers = (empty)
@@ -22,12 +25,6 @@
 # Maximum number of client connections per IP
 # default is 0 (no limit)
 # max-cons-per-ip = 0
-
-# Auth URL for alternate providers (eg OpenStack)
-# auth-url = (empty)
-
-# Connect via Rackspace ServiceNet network.
-# service-net = no
 
 # Be verbose on logging.
 # verbose = no

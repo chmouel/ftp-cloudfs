@@ -2,7 +2,6 @@ import types
 import fcntl
 import os
 
-
 class PidFile(object):
     """Context manager that locks a pid file."""
     def __init__(self, path):
@@ -29,7 +28,6 @@ class PidFile(object):
             self.pidfile.close()
             os.remove(self.path)
 
-
 #from django.utils
 def smart_str(s, encoding='utf-8', strings_only=False, errors='strict'):
     if strings_only and isinstance(s, (types.NoneType, int)):
@@ -48,3 +46,4 @@ def smart_str(s, encoding='utf-8', strings_only=False, errors='strict'):
         return s.decode('utf-8', errors).encode(encoding, errors)
     else:
         return s
+

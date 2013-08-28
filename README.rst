@@ -1,6 +1,6 @@
-==========================================================
-FTP Interface to Rackspace Cloud Files and OpenStack Swift
-==========================================================
+=================================================
+FTP Interface to OpenStack Object Storage (Swift)
+=================================================
 
 :Homepage:  http://blog.chmouel.com/2009/10/29/ftp-server-for-cloud-files/
 :Credits:   Copyright 2009--2013 Chmouel Boudjnah <chmouel@chmouel.com>
@@ -10,43 +10,35 @@ FTP Interface to Rackspace Cloud Files and OpenStack Swift
 DESCRIPTION
 ===========
 
-ftp-cloudfs is a ftp server acting as a proxy to `Rackspace Cloud Files`_ or to `OpenStack Object Storage (swift)`_.
+ftp-cloudfs is a ftp server acting as a proxy to `OpenStack Object Storage (swift)`_.
 It allow you to connect via any FTP client to do upload/download or create containers.
 
-By default the server will bind to port 2021 which allow to be run as
-a non root/administrator user.
+By default the server will bind to port 2021 which allow to be run as a non
+root/administrator user.
 
 .. _OpenStack Object Storage (Swift): http://launchpad.net/swift
-.. _RackSpace Cloud Files: http://www.rackspace.com/cloud/cloud_hosting_products/files/
 
-It supports pseudo-hierarchical folders/directories as described in the `Rackspace Cloud Files API`_ and
-the `OpenStack Object Storage API`_.
+It supports pseudo-hierarchical folders/directories as described in the `OpenStack Object Storage API`_.
 
-.. _Rackspace Cloud Files API: http://docs.rackspacecloud.com/files/api/cf-devguide-latest.pdf
 .. _OpenStack Object Storage API: http://docs.openstack.org/openstack-object-storage/developer/content/
+
 
 REQUIREMENT
 ===========
 
-- Python >= 2.6
-- python-cloudfiles >= 1.3.0  - http://github.com/rackspace/python-cloudfiles
+- Python 2 >= 2.6
+- python-swiftclient >= 1.2.0 - https://github.com/openstack/python-swiftclient/
 - pyftpdlib >= 1.2.0 - http://code.google.com/p/pyftpdlib/
 - python-daemon >= 1.5.5 - http://pypi.python.org/pypi/python-daemon/
 - python-memcache >= 1.45 - http://www.tummy.com/Community/software/python-memcached/
 
-Optional, only for Auth 2.0 (Keystone):
-
-- python-keystoneclient >= 0.1.3.66 - https://github.com/openstack/python-keystoneclient
 
 Operating Systems
 =================
 
-This has been tested on a Debian testing Linux distribution but it
-should work on any Unix-like (including MacOS X) as long you have the
-requirement listed above.
+fpt-cloudfs is developed and tested in Ubuntu and Debian Linux distributions but it should work on any
+Unix-like (including Mac OS X) as long as you install the requirements listed above.
 
-It should as well work on Windows but this has been completely
-untested.
 
 INSTALL
 =======
@@ -55,49 +47,44 @@ Use standard setup.py directives ie.::
 
   python setup.py install
 
-Or if you have `pip`_ installed you can just do a::
+Or if you have `pip`_ installed you can just run::
 
   pip install ftp-cloudfs
 
 which will install ftp-cloudfs with all the dependencies needed.
 
-On a Debian/Ubuntu the preferred way to install would be like this::
-
-  apt-get -y install python-daemon python-stdeb
-  pypi-install python-memcached
-  pypi-install python-cloudfiles
-  pypi-install pyftpdlib
-  pypi-install ftp-cloudfs
-
-It has been `included in Debian Jessie`_.
+ftp-cloudfs has been `included in Debian Jessie`_.
 
 .. _`pip`: http://pip.openplans.org/
 .. _included in Debian Jessie: http://packages.debian.org/jessie/ftp-cloudfs
+
 
 USAGE
 ======
 
 The install should have created a /usr/bin/ftpcloudfs (or whatever
 prefix defined in your python distribution or command line arguments)
-which can be used like this :
+which can be used like this:
 
-Usage: ftpcloudfs [OPTIONS].....
+Usage: ftpcloudfs [options]
+
+Options:
+  --version             show program's version number and exit
   -h, --help            show this help message and exit
-  -p PORT, --port=PORT  Port to bind the server default: 2021.
+  -p PORT, --port=PORT  Port to bind the server (default: 2021)
   -b BIND_ADDRESS, --bind-address=BIND_ADDRESS
-                        Address to bind by default: 127.0.0.1.
-  --memcache=MEMCACHE   Memcache server(s) to be used for cache (ip:port).
+                        Address to bind (default: 127.0.0.1)
   -a AUTHURL, --auth-url=AUTHURL
-                        Auth URL for alternate providers(eg OpenStack)
-  -v, --verbose         Be verbose on logging.
-  -s, --service-net     Connect via Rackspace ServiceNet network.
+                        Authentication URL (required)
+  --memcache=MEMCACHE   Memcache server(s) to be used for cache (ip:port)
+  -v, --verbose         Be verbose on logging
   -f, --foreground      Do not attempt to daemonize but run in foreground.
   -l LOG_FILE, --log-file=LOG_FILE
-                        Log File: Default stdout when in foreground
+                        Log File: Default stdout when in foreground.
   --syslog              Enable logging to the system logger (daemon facility).
   --pid-file=PID_FILE   Pid file location when in daemon mode.
-  --uid=UID             UID to drop the privilege to when in daemon mode
-  --gid=GID             GID to drop the privilege to when in daemon mode
+  --uid=UID             UID to drop the privilige to when in daemon mode.
+  --gid=GID             GID to drop the privilige to when in daemon mode.
   --keystone-auth       Use auth 2.0 (Keystone, requires keystoneclient).
   --keystone-region-name=REGION_NAME
                         Region name to be used in auth 2.0.
@@ -114,12 +101,13 @@ Usage: ftpcloudfs [OPTIONS].....
 The defaults can be changed using a configuration file (by default in
 /etc/ftpcloudfs.conf). Check the example file included in the package.
 
+
 CACHE MANAGEMENT
 ================
 
-Both `Rackspace Cloud Files`_ and `OpenStack Object Storage (Swift)`_ are a object storages
-and not real file systems. This proxy simulates enough file system functionality
-to be used over FTP, but it has a performance hit.
+`OpenStack Object Storage (Swift)`_ is an object storage and not a real file system. 
+This proxy simulates enough file system functionality to be used over FTP, but it
+has a performance impact.
 
 To improve the performance a cache is used. It can be local or external (with
 Memcache). By default a local cache is used, unless one or more Memcache servers
@@ -128,11 +116,13 @@ are configured.
 If you're using just one client the local cache may be fine, but if you're using
 several connections, configuring an external cache is highly recommended.
 
+
 AUTH 2.0
 ========
 
-By default ftp-cloudfs will use Swift auth 1.0, that is compatible with `Rackspace Cloud Files`
-and `OpenStack Object Storage` using `swauth`_ auth middleware.
+By default ftp-cloudfs will use Swift auth 1.0, that is compatible with `OpenStack Object Storage`
+using `swauth`_ auth middleware and Swift implementations such as `Rackspace Cloud Files` or
+`Memset's Memstore Cloud Storage`.
 
 Optionally `OpenStack Identity Service 2.0`_ can be used. Currently python-keystoneclient is
 required to use auth 2.0 and it can be enabled with ``keystone-auth`` option.
@@ -142,18 +132,18 @@ separator). Please check the example configuration file for further details.
 
 .. _swauth: https://github.com/gholt/swauth
 .. _OpenStack Identity Service 2.0: http://docs.openstack.org/api/openstack-identity-service/2.0/content/index.html
+.. _RackSpace Cloud Files: http://www.rackspace.com/cloud/cloud_hosting_products/files/
+.. _Memset's Memstore Cloud Storage: https://www.memset.com/cloud/storage/
+
 
 SUPPORT
 =======
 
-This tool is not supported by Rackspace in any sort but I will be
-happy to help you as much as possible. Your best bet to report issues
-and or feature request is to have them reported in the github issue
-tracker :
+The project website is at:
 
 https://github.com/chmouel/ftp-cloudfs/issues
 
-There's additional information at :
+There you can file bug reports, ask for help or contribute patches. There's additional information at:
 
 https://github.com/chmouel/ftp-cloudfs/wiki
 
@@ -182,12 +172,9 @@ exceptions contain licensing information in them.
   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+  THE SOFTWARE.
 
-  Except as contained in this notice, the name of Rackspace US, Inc. shall not
-  be used in advertising or otherwise to promote the sale, use or other dealings
-  in this Software without prior written authorisation from Rackspace US, Inc. 
 
 Authors
 =======

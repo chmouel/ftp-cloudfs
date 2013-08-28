@@ -2,7 +2,7 @@ import sys
 import socket
 from pyftpdlib.handlers import DTPHandler, FTPHandler, _strerror
 from ftpcloudfs.utils import smart_str
-from server import RackspaceCloudAuthorizer
+from server import ObjectStorageAuthorizer
 from multiprocessing.managers import RemoteError
 
 class MyDTPHandler(DTPHandler):
@@ -27,23 +27,27 @@ class MyFTPHandler(FTPHandler):
     # don't kick off client in long time transactions
     timeout = 0
     dtp_handler = MyDTPHandler
-    authorizer = RackspaceCloudAuthorizer()
+    authorizer = ObjectStorageAuthorizer()
     max_cons_per_ip = 0
     use_sendfile = False
 
     @staticmethod
     def abstracted_fs(root, cmd_channel):
-        '''Get an AbstractedFs for the user logged in on the cmd_channel'''
+        """Get an AbstractedFs for the user logged in on the cmd_channel."""
         cffs = cmd_channel.authorizer.get_abstracted_fs(cmd_channel.username)
         cffs.init_abstracted_fs(root, cmd_channel)
         return cffs
 
     def process_command(self, cmd, *args, **kwargs):
-        '''Flush the FS cache with every new FTP command (non-shared cache)'''
+        """
+        Flush the FS cache with every new FTP command (non-shared cache).
+
+        Also track the remote ip to set the X-Forwarded-For header.
+        """
         if self.fs:
             if self.fs.memcache_hosts is None:
                 self.fs.flush()
-            self.fs.connection.real_ip = self.remote_ip
+            self.fs.conn.real_ip = self.remote_ip
         FTPHandler.process_command(self, cmd, *args, **kwargs)
 
     def ftp_MD5(self, path):
@@ -58,7 +62,7 @@ class MyFTPHandler(FTPHandler):
             self.respond('251 "%s" %s' % (line.replace('"', '""'), msg))
 
     def handle(self):
-        """Track the ip and check max cons per ip (if needed)"""
+        """Track the ip and check max cons per ip (if needed)."""
         if self.max_cons_per_ip and self.remote_ip and self.shared_ip_map != None:
             count = 0
             try:
@@ -80,7 +84,7 @@ class MyFTPHandler(FTPHandler):
         FTPHandler.handle(self)
 
     def handle_error(self):
-        """Catch some 'expected' exceptions not processed by FTPHandler/AsyncChat"""
+        """Catch some 'expected' exceptions not processed by FTPHandler/AsyncChat."""
         # this is aesthetic only
         t, v, _ = sys.exc_info()
         if t == socket.error:
@@ -91,7 +95,7 @@ class MyFTPHandler(FTPHandler):
         FTPHandler.handle_error(self)
 
     def close(self):
-        """Remove the ip from the shared map before calling close"""
+        """Remove the ip from the shared map before calling close."""
         if not self._closed and self.max_cons_per_ip and self.shared_ip_map != None:
             try:
                 self.shared_lock.acquire()

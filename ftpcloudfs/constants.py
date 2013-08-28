@@ -1,10 +1,9 @@
-version = '0.22'
+version = '0.23'
 
-default_banner = "Rackspace Cloud Files %v using pyftpdlib %f ready."
+default_banner = "ftp-cloudfs %v using pyftpdlib %f ready."
 default_config_file = '/etc/ftpcloudfs.conf'
 default_address = '127.0.0.1'
 default_port = 2021
-cloudfiles_api_timeout = 30
 
 # keystone defaults
 default_ks_tenant_separator = '.'

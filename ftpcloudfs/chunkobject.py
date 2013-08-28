@@ -1,57 +1,55 @@
-from urllib  import quote
-from socket  import timeout
-from ssl     import SSLError
 
-from cloudfiles import consts
-from cloudfiles.storage_object import Object
-from cloudfiles.errors  import ResponseError
+import logging
+from urllib import quote
+from socket import timeout
+from ssl import SSLError
+from swiftclient.client import ClientException, http_connection
 
 from ftpcloudfs.utils import smart_str
 
-class ChunkObject(Object):
-    def prepare_chunk(self):
-        self.size = None
-        self._name_check()
+class ChunkObject(object):
 
-        # This method implicitly disables verification
-        if not self._etag_override:
-            self._etag = None
+    def __init__(self, conn, container, name, content_type=None):
+        # FIXME
+        # self._name_check()
 
-        if not self.content_type:
-            self.content_type = 'application/octet-stream'
+        parsed, self.chunkable_http = http_connection(conn.url)
 
-        path = "/%s/%s/%s" % (self.container.conn.uri.rstrip('/'),
-                              quote(smart_str(self.container.name)),
-                              quote(smart_str(self.name)),
-                              )
-        headers = self._make_headers()
-        if self.size is None:
-            del headers['Content-Length']
-            headers['Transfer-Encoding'] = 'chunked'
-        headers['X-Auth-Token'] = self.container.conn.token
-        headers['User-Agent'] = consts.user_agent
-        if self.container.conn.real_ip:
-            headers['X-Forwarded-For'] = self.container.conn.real_ip
-        self.chunkable_http = self.container.conn.connection
+        logging.debug("ChunkObject: new connection open (%r, %r)" % (parsed, self.chunkable_http))
+
+        path = '%s/%s/%s' % (parsed.path.rstrip('/'),
+                             quote(smart_str(container)),
+                             quote(smart_str(name)),
+                             )
+        headers = { 'X-Auth-Token': conn.token,
+                    'Content-Type': content_type or 'application/octet-stream',
+                    'Transfer-Encoding': 'chunked',
+                    # User-Agent ?
+                    }
+        if conn.real_ip:
+            headers['X-Forwarded-For'] = conn.real_ip
         self.chunkable_http.putrequest('PUT', path)
         for key, value in headers.iteritems():
             self.chunkable_http.putheader(key, value)
         self.chunkable_http.endheaders()
+        logging.debug("ChunkedObject: path=%r, headers=%r" % (path, headers))
 
     def send_chunk(self, chunk):
+        logging.debug("ChunkObject: sending %s bytes" % len(chunk))
         try:
             self.chunkable_http.send("%X\r\n" % len(chunk))
             self.chunkable_http.send(chunk)
             self.chunkable_http.send("\r\n")
         except (timeout, SSLError), err:
-            raise ResponseError(408, err.message)
+            raise ClientException(err.message)
 
     def finish_chunk(self):
+        logging.debug("ChunkObject: finish_chunk")
         try:
             self.chunkable_http.send("0\r\n\r\n")
             response = self.chunkable_http.getresponse()
         except (timeout, SSLError), err:
-            raise ResponseError(408, err.message)
+            raise ClientException(err.message)
 
         try:
             response.read()
@@ -59,10 +57,9 @@ class ChunkObject(Object):
             # this is not relevant, keep going
             pass
 
-        if (response.status < 200) or (response.status > 299):
-            raise ResponseError(response.status, response.reason)
-
-        for hdr in response.getheaders():
-            if hdr[0].lower() == 'etag':
-                self._etag = hdr[1]
+        if response.status // 100 != 2:
+            raise ClientException(response.reason,
+                                  http_status=response.status,
+                                  http_reason=response.reason,
+                                  )
 

@@ -1,9 +1,10 @@
 """
-Errors for cloudfilesfs
+Errors for ObjectStorageFS
 """
 
 class IOSError(OSError, IOError):
-    '''Subclass of OSError and IOError
+    """
+    Subclass of OSError and IOError.
 
     This is needed because pyftpdlib catches either OSError, or
     IOError depending on which operation it is performing, which is
@@ -15,5 +16,6 @@ class IOSError(OSError, IOError):
     raise.
 
     Using this combined type everywhere fixes the problem at very
-    small cost (multiple inheritance!)'''
+    small cost (multiple inheritance!).
+    """
 
