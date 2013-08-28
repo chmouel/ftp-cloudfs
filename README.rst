@@ -2,7 +2,7 @@
 FTP Interface to OpenStack Object Storage (Swift)
 =================================================
 
-:Homepage:  http://blog.chmouel.com/2009/10/29/ftp-server-for-cloud-files/
+:Homepage:  https://github.com/chmouel/ftp-cloudfs
 :Credits:   Copyright 2009--2013 Chmouel Boudjnah <chmouel@chmouel.com>
 :Licence:   MIT
 
