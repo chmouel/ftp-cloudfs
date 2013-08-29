@@ -78,25 +78,25 @@ Options:
                         Authentication URL (required)
   --memcache=MEMCACHE   Memcache server(s) to be used for cache (ip:port)
   -v, --verbose         Be verbose on logging
-  -f, --foreground      Do not attempt to daemonize but run in foreground.
+  -f, --foreground      Do not attempt to daemonize but run in foreground
   -l LOG_FILE, --log-file=LOG_FILE
-                        Log File: Default stdout when in foreground.
-  --syslog              Enable logging to the system logger (daemon facility).
-  --pid-file=PID_FILE   Pid file location when in daemon mode.
-  --uid=UID             UID to drop the privilige to when in daemon mode.
-  --gid=GID             GID to drop the privilige to when in daemon mode.
-  --keystone-auth       Use auth 2.0 (Keystone, requires keystoneclient).
+                        Log File: Default stdout when in foreground
+  --syslog              Enable logging to the system logger (daemon facility)
+  --pid-file=PID_FILE   Pid file location when in daemon mode
+  --uid=UID             UID to drop the privilige to when in daemon mode
+  --gid=GID             GID to drop the privilige to when in daemon mode
+  --keystone-auth       Use auth 2.0 (Keystone, requires keystoneclient)
   --keystone-region-name=REGION_NAME
-                        Region name to be used in auth 2.0.
+                        Region name to be used in auth 2.0
   --keystone-tenant-separator=TENANT_SEPARATOR
                         Character used to separate tenant_name/username in
-                        auth 2.0, default: TENANT.USERNAME.
+                        auth 2.0 (default: TENANT.USERNAME)
   --keystone-service-type=SERVICE_TYPE
-                        Service type to be used in auth 2.0, default: object-
-                        store.
+                        Service type to be used in auth 2.0 (default: object-
+                        store)
   --keystone-endpoint-type=ENDPOINT_TYPE
-                        Endpoint type to be used in auth 2.0, default:
-                        publicURL.
+                        Endpoint type to be used in auth 2.0 (default:
+                        publicURL)
 
 The defaults can be changed using a configuration file (by default in
 /etc/ftpcloudfs.conf). Check the example file included in the package.
