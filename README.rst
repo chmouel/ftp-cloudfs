@@ -141,11 +141,11 @@ SUPPORT
 
 The project website is at:
 
-https://github.com/chmouel/ftp-cloudfs/issues
+https://github.com/cloudfs/ftp-cloudfs/issues
 
 There you can file bug reports, ask for help or contribute patches. There's additional information at:
 
-https://github.com/chmouel/ftp-cloudfs/wiki
+https://github.com/cloudfs/ftp-cloudfs/wiki
 
 LICENSE
 =======
