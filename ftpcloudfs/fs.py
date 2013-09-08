@@ -503,11 +503,13 @@ class ObjectStorageFS(object):
 
             logging.debug("keystone authurl=%r username=%r tenant_name=%r conf=%r" % (self.authurl, username, tenant_name, self.keystone))
 
+            ks = self.keystone
             kwargs["auth_version"] = "2.0"
-            kwargs["service_type"] = self.keystone['service_type']
-            kwargs["endpoint_type"] = self.keystone['endpoint_type']
             kwargs["tenant_name"] = tenant_name
-            kwargs["region_name"] = self.keystone['region_name']
+            kwargs["os_options"] = dict(service_type=ks['service_type'],
+                                        endpoint_type=ks['endpoint_type'],
+                                        region_name=ks['region_name'],
+                                        )
 
         self.conn = ProxyConnection(user=username, key=api_key, **kwargs)
         self.conn.get_auth()
