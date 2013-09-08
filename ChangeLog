@@ -1,3 +1,9 @@
+2013-09-08 Juan J. Martinez <juan@memset.com>
+
+ * 0.23.1
+  - Fixed a bug that prevented Auth 2.0 (keystone) to work.
+    Thanks to Dmitry (cyberflow) for the report.
+
 2013-08-29 Juan J. Martinez <juan@memset.com>
 
  * 0.23
