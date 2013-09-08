@@ -216,6 +216,10 @@ class Main(object):
         (options, _) = parser.parse_args()
 
         if options.keystone:
+            try:
+                from keystoneclient.v2_0 import client as _test_ksclient
+            except ImportError:
+                parser.error("Auth 2.0 (keystone) requires python-keystoneclient.")
             keystone_keys = ('region_name', 'tenant_separator', 'service_type', 'endpoint_type')
             options.keystone = dict((key, getattr(options, key)) for key in keystone_keys)
 
