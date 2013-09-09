@@ -27,7 +27,7 @@ REQUIREMENT
 ===========
 
 - Python 2 >= 2.6
-- python-swiftclient >= 1.2.0 - https://github.com/openstack/python-swiftclient/
+- python-swiftclient >= 1.6.0 - https://github.com/openstack/python-swiftclient/
 - pyftpdlib >= 1.2.0 - http://code.google.com/p/pyftpdlib/
 - python-daemon >= 1.5.5 - http://pypi.python.org/pypi/python-daemon/
 - python-memcache >= 1.45 - http://www.tummy.com/Community/software/python-memcached/
@@ -124,8 +124,8 @@ By default ftp-cloudfs will use Swift auth 1.0, that is compatible with `OpenSta
 using `swauth`_ auth middleware and Swift implementations such as `Rackspace Cloud Files` or
 `Memset's Memstore Cloud Storage`.
 
-Optionally `OpenStack Identity Service 2.0`_ can be used. Currently python-keystoneclient is
-required to use auth 2.0 and it can be enabled with ``keystone-auth`` option.
+Optionally `OpenStack Identity Service 2.0`_ can be used. Currently python-keystoneclient (0.3.2+
+recommended) is required to use auth 2.0 and it can be enabled with ``keystone-auth`` option.
 
 You can provide a tenant name in the FTP login user with TENANT.USERNAME (using a dot as
 separator). Please check the example configuration file for further details.
