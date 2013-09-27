@@ -23,14 +23,20 @@ It supports pseudo-hierarchical folders/directories as described in the `OpenSta
 .. _OpenStack Object Storage API: http://docs.openstack.org/openstack-object-storage/developer/content/
 
 
-REQUIREMENT
-===========
+REQUIREMENTS
+============
 
 - Python 2 >= 2.6
 - python-swiftclient >= 1.6.0 - https://github.com/openstack/python-swiftclient/
 - pyftpdlib >= 1.2.0 - http://code.google.com/p/pyftpdlib/
 - python-daemon >= 1.5.5 - http://pypi.python.org/pypi/python-daemon/
 - python-memcache >= 1.45 - http://www.tummy.com/Community/software/python-memcached/
+
+IMPORTANT: pyftpdlib 1.2.0 has a couple of known issues (memory leak, file descriptor leak) and it shouldn't
+be used in production systems. There's no ETA for the next release so meanwhile you can upgrade to a patched
+version with pip. Just upgrade pip to the latest version and then run::
+
+  pip install --upgrade -e svn+http://pyftpdlib.googlecode.com/svn/trunk@1230#egg=pyftpdlib
 
 
 Operating Systems
