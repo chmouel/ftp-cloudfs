@@ -454,8 +454,20 @@ class ObjectStorageFSTest(unittest.TestCase):
 
 class MockupConnection(object):
     '''Mockup object to simulate a CF connection.'''
-    def __init__(self, num_objects):
+    def __init__(self, num_objects, objects):
         self.num_objects = num_objects
+        self.objects = objects
+
+    @staticmethod
+    def gen_object(name):
+        return dict(bytes=1024, content_type='text/plain',
+                    hash='c644eacf6e9c21c7d2cca3ce8bb0ec13',
+                    last_modified='2012-06-20T00:00:00.000000',
+                    name=name)
+
+    @staticmethod
+    def gen_subdir(name):
+        return dict(subdir=name)
 
     def list_containers_info(self):
         return [dict(count=self.num_objects, bytes=1024*self.num_objects, name='container'),]
@@ -467,6 +479,23 @@ class MockupConnection(object):
         if container != 'container':
             raise client.ClientException("Not found", http_status=404)
 
+        # test provided objects
+        if self.objects:
+            index = 0
+            if marker:
+                while True:
+                    name = self.objects[index].get('name', self.objects[index].get('subdir'))
+                    if marker == name.rstrip("/"):
+                        index += 1
+                        break
+                    index += 1
+                    if index == self.num_objects:
+                        # marker not found, so it's ignored
+                        index = 0
+                        break
+            return {}, self.objects[index:index+10000]
+
+        # generated
         start = 0
         if marker:
             while start <= self.num_objects:
@@ -483,10 +512,7 @@ class MockupConnection(object):
         if end > limit:
             end = limit
 
-        return {}, [dict(bytes=1024, content_type='text/plain',
-                         hash='c644eacf6e9c21c7d2cca3ce8bb0ec13',
-                         last_modified='2012-06-20T00:00:00.000000',
-                         name='object%s.txt' % i) for i in xrange(start, start+end)]
+        return {}, [self.gen_object('object%s.txt' % i) for i in xrange(start, start+end)]
 
 class MockupOSFS(object):
     '''Mockup object to simulate a CFFS.'''
@@ -494,9 +520,13 @@ class MockupOSFS(object):
     auth_url = 'https://auth.service.fake/v1'
     username = 'user'
 
-    def __init__(self, num_objects):
+    def __init__(self, num_objects, objects=None):
+        if objects and len(objects) != num_objects:
+            raise ValueError("objects provided but num_objects doesn't match")
+
         self.num_objects = num_objects
-        self.conn = MockupConnection(num_objects)
+        self.objects = objects
+        self.conn = MockupConnection(num_objects, objects)
 
     def _container_exists(self, container):
         if container != 'container':
@@ -529,6 +559,20 @@ class ListDirTest(unittest.TestCase):
         ld = lc.listdir('/container')
         self.assertEqual(len(ld), 10100)
         self.assertEqual(sorted(ld), sorted(['object%s.txt' % i for i in xrange(10100)]))
+
+    def test_listdir_marker_is_subdir(self):
+        """Test listdir, more than 10000 (limit) objects, marker will be a subdir"""
+
+        objects = [MockupConnection.gen_object("object%s.txt" % i) for i in xrange(9999)] + \
+                  [MockupConnection.gen_subdir("00dir_name/")] + \
+                  [MockupConnection.gen_object("object%s.txt" % i) for i in xrange(9999, 10099)]
+
+        lc = ListDirCache(MockupOSFS(10100, objects))
+
+        ld = sorted(lc.listdir('/container'))
+        self.assertEqual(len(ld), 10100)
+        self.assertEqual(ld[0], '00dir_name')
+        self.assertEqual(ld[1:], sorted(['object%s.txt' % i for i in xrange(10099)]))
 
 if __name__ == '__main__':
     unittest.main()

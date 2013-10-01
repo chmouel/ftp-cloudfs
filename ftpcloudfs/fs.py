@@ -319,7 +319,11 @@ class ListDirCache(object):
         while nbobjects >= 10000:
             # get last object as a marker
             lastobject = objects[-1]
-            lastobjectname = lastobject['name']
+            if 'subdir' in lastobject:
+                # {u'subdir': 'dirname'}
+                lastobjectname = lastobject['subdir'].rstrip("/")
+            else:
+                lastobjectname = lastobject['name']
             # get a new list with the marker
             _, newobjects = self.conn.get_container(container, prefix=prefix, delimiter="/", marker=lastobjectname)
             # get the new list length
