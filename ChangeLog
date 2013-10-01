@@ -1,5 +1,11 @@
 2013-09-29 Juan J. Martinez <juan@memset.com>
 
+ * 0.23.3
+  - Fixed a bug that was preventing non privileged users to log in. That
+    was introduced in 0.23.2.
+
+2013-09-29 Juan J. Martinez <juan@memset.com>
+
  * 0.23.2
   - Fixed a bug that was raising an exception at the first swift operation
     after authentication.
