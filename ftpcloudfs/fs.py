@@ -512,7 +512,8 @@ class ObjectStorageFS(object):
                                         )
 
         self.conn = ProxyConnection(user=username, key=api_key, **kwargs)
-        self.conn.get_auth()
+        # force authentication
+        self.conn.head_account()
 
     def close(self):
         """Dummy function which does nothing - no need to close"""
