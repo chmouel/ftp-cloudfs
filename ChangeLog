@@ -1,3 +1,9 @@
+2013-10-02 Juan J. Martinez <juan@memset.com>
+
+ * 0.23.4
+  - Fixed a bug listing a directory with more than 10k objects that
+    included a virtual directory ('subdir') as last object of a 10k batch.
+
 2013-09-29 Juan J. Martinez <juan@memset.com>
 
  * 0.23.3
