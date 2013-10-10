@@ -37,7 +37,12 @@ class ProxyConnection(Connection):
     Optionally if `range_from` is available it will be used to add a Range header
     starting from it.
     """
-    def __init__(self, *args, **kwargs):
+
+    # max time to cache auth tokens (seconds), based on swift defaults
+    TOKEN_TTL = 86400
+
+    def __init__(self, memcache, *args, **kwargs):
+        self.memcache = memcache
         self.real_ip = None
         self.range_from = None
         super(ProxyConnection, self).__init__(*args, **kwargs)
@@ -62,6 +67,21 @@ class ProxyConnection(Connection):
         conn.request = request_wrapper(conn.request)
 
         return parsed, conn
+
+    def get_auth(self):
+        """Perform the authentication using a token cache if memcache is available"""
+        if self.memcache:
+            key = "tk%s" % md5("%s%s%s" % (self.authurl, self.user, self.key)).hexdigest()
+            cache = self.memcache.get(key)
+            if not cache:
+                logging.debug("token cache miss, key=%s" % key)
+                cache = super(ProxyConnection, self).get_auth()
+                self.memcache.set(key, cache, self.TOKEN_TTL)
+            else:
+                logging.debug("token cache hit, key=%s" % key)
+            return cache
+        # no memcache
+        return super(ProxyConnection, self).get_auth()
 
 def translate_objectstorage_error(fn):
     """
@@ -485,11 +505,11 @@ class ObjectStorageFS(object):
         self.conn = None
         self.authurl = authurl
         self.keystone = keystone
-        if username is not None:
-            self.authenticate(username, api_key)
         # A cache to hold the information from the last listdir
         self._listdir_cache = ListDirCache(self)
         self._cwd = '/'
+        if username is not None:
+            self.authenticate(username, api_key)
 
     @translate_objectstorage_error
     def authenticate(self, username, api_key):
@@ -515,7 +535,11 @@ class ObjectStorageFS(object):
                                         region_name=ks['region_name'],
                                         )
 
-        self.conn = ProxyConnection(user=username, key=api_key, **kwargs)
+        self.conn = ProxyConnection(self._listdir_cache.memcache,
+                                    user=username,
+                                    key=api_key,
+                                    **kwargs
+                                    )
         # force authentication
         self.conn.url, self.conn.token = self.conn.get_auth()
         self.conn.http_conn = None

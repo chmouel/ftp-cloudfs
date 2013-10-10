@@ -122,6 +122,11 @@ are configured.
 If you're using just one client the local cache may be fine, but if you're using
 several connections, configuring an external cache is highly recommended.
 
+If an external cache is available it will be used to cache authentication tokens too
+so any Memcache server must be secured to prevent unauthorized access as it could be
+possible to associate a token with a specific user (not trivial) or even use the
+cache key (MD5 hash) to brute-force the user password.
+
 
 AUTH 2.0
 ========
