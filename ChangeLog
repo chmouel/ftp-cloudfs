@@ -1,3 +1,9 @@
+2013-10-11 Juan J. Martinez <juan@memset.com>
+
+ * 0.24
+  - Introduced an auth token cache when memcache is available.
+    Thanks to Vil Surkin for the RFE.
+
 2013-10-02 Juan J. Martinez <juan@memset.com>
 
  * 0.23.4
