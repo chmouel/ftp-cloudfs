@@ -471,7 +471,9 @@ class ListDirCache(object):
                         raise IOSError(ENOENT, 'No such file or directory %s' % leaf)
 
                     logging.debug("Accessing %r container without root listing" % leaf)
-                    stat_info = self._make_stat(count=container["x-container-object-count"], bytes=container["x-container-bytes-used"])
+                    stat_info = self._make_stat(count=int(container["x-container-object-count"]),
+                                                bytes=int(container["x-container-bytes-used"]),
+                                                )
                 else:
                     raise IOSError(ENOENT, 'No such file or directory %s' % leaf)
         else:
