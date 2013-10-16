@@ -1,3 +1,12 @@
+2013-10-12 Juan J. Martinez <juan@memset.com>
+
+ * 0.24.1
+  - Fixed a small bug that prevented users with no privileges to list
+    the root directory to access containers with the appropriate ACL.
+    This was affecting sftp-cloudfs mainly as some SFTP client will
+    perform 'stat' over a directory before 'cd'. It was introduced
+	in 0.23.
+
 2013-10-11 Juan J. Martinez <juan@memset.com>
 
  * 0.24
