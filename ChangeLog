@@ -1,11 +1,17 @@
+2013-10-17 Juan J. Martinez <juan@memset.com>
+
+ * 0.24.2
+  - Fixed a bug in token cache code. The server could get stuck with
+    a cached invalid token not requesting a new one.
+
 2013-10-12 Juan J. Martinez <juan@memset.com>
 
  * 0.24.1
   - Fixed a small bug that prevented users with no privileges to list
     the root directory to access containers with the appropriate ACL.
-    This was affecting sftp-cloudfs mainly as some SFTP client will
-    perform 'stat' over a directory before 'cd'. It was introduced
-	in 0.23.
+    This was affecting sftp-cloudfs mainly as some SFTP clients will
+    perform 'stat' over a directory before 'cd'. The problem  was
+    introduced in 0.23.
 
 2013-10-11 Juan J. Martinez <juan@memset.com>
 
