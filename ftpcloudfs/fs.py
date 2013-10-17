@@ -45,6 +45,7 @@ class ProxyConnection(Connection):
         self.memcache = memcache
         self.real_ip = None
         self.range_from = None
+        self.ignore_auth_cache = False
         super(ProxyConnection, self).__init__(*args, **kwargs)
 
     def http_connection(self):
@@ -73,12 +74,14 @@ class ProxyConnection(Connection):
         if self.memcache:
             key = "tk%s" % md5("%s%s%s" % (self.authurl, self.user, self.key)).hexdigest()
             cache = self.memcache.get(key)
-            if not cache:
+            if not cache or self.ignore_auth_cache:
                 logging.debug("token cache miss, key=%s" % key)
                 cache = super(ProxyConnection, self).get_auth()
                 self.memcache.set(key, cache, self.TOKEN_TTL)
+                self.ignore_auth_cache = False
             else:
                 logging.debug("token cache hit, key=%s" % key)
+                self.ignore_auth_cache = True
             return cache
         # no memcache
         return super(ProxyConnection, self).get_auth()
