@@ -26,6 +26,10 @@
 # default is 0 (no limit)
 # max-cons-per-ip = 0
 
+# Large file support.
+# Specify a size in MB to split large files.
+# split-large-files = (empty)
+
 # Be verbose on logging.
 # verbose = no
 

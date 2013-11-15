@@ -13,6 +13,7 @@ from optparse import OptionParser
 import pyftpdlib.servers
 
 from server import ObjectStorageFtpFS
+from fs import ObjectStorageFD
 from constants import version, default_address, default_port, \
     default_config_file, default_banner, \
     default_ks_tenant_separator, default_ks_service_type, default_ks_endpoint_type
@@ -93,6 +94,7 @@ class Main(object):
                                   'uid': None,
                                   'gid': None,
                                   'masquerade-firewall': None,
+                                  'split-large-files': '0',
                                   # keystone auth 2.0 support
                                   'keystone-auth': False,
                                   'keystone-region-name': None,
@@ -237,6 +239,12 @@ class Main(object):
         ObjectStorageFtpFS.authurl = self.options.authurl
         ObjectStorageFtpFS.keystone = self.options.keystone
         ObjectStorageFtpFS.memcache_hosts = self.options.memcache
+
+        try:
+            # store bytes
+            ObjectStorageFD.split_size = int(self.config.get('ftpcloudfs', 'split-large-files'))*10**6
+        except ValueError, errmsg:
+            sys.exit('Split large files error: %s' % errmsg)
 
         masquerade = self.config.get('ftpcloudfs', 'masquerade-firewall')
         if masquerade:

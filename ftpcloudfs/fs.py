@@ -7,6 +7,7 @@ Authors: Chmouel Boudjnah <chmouel@chmouel.com>
 """
 
 import os
+import sys
 import time
 import mimetypes
 import stat
@@ -19,6 +20,7 @@ import posixpath
 from utils import smart_str
 from functools import wraps
 import memcache
+import multiprocessing
 try:
     from hashlib import md5
 except ImportError:
@@ -131,6 +133,9 @@ def parse_fspath(path):
 
 class ObjectStorageFD(object):
     """File alike object attached to the Object Storage."""
+
+    split_size = 0
+
     def __init__(self, cffs, container, obj, mode):
         self.cffs = cffs
         self.container = container
@@ -138,7 +143,11 @@ class ObjectStorageFD(object):
         self.mode = mode
         self.closed = False
         self.total_size = 0
+        self.part_size = 0
+        self.part = 0
         self.headers = dict()
+        self.content_type = mimetypes.guess_type(self.name)[0]
+        self.pending_copy_task = None
 
         self.obj = None
 
@@ -155,24 +164,105 @@ class ObjectStorageFD(object):
             logging.debug("read fd %r" % self.name)
         else: # write
             logging.debug("write fd %r" % self.name)
-            self.obj = ChunkObject(self.conn, self.container, self.name, content_type=mimetypes.guess_type(self.name)[0])
+            self.obj = ChunkObject(self.conn, self.container, self.name, content_type=self.content_type)
+
+    @property
+    def part_base_name(self):
+        return u"%s.part" % self.name
+
+    @property
+    def part_name(self):
+        return u"%s/%.6d" % (self.part_base_name, self.part)
 
     @property
     def conn(self):
         """Connection to the storage."""
         return self.cffs.conn
 
+    def _start_copy_task(self):
+        """
+        Copy the first part of a multi-part file to its final location and create
+        the manifest file.
+
+        This happens in the background, pending_copy_task must be cleaned up at
+        the end.
+        """
+        def copy_task(conn, container, name, part_name, part_base_name):
+            # open a new connection
+            conn = ProxyConnection(None, preauthurl=conn.url, preauthtoken=conn.token)
+            headers = { 'x-copy-from': "/%s/%s" % (container, name) }
+            logging.debug("copying first part %r/%r, %r" % (container, part_name, headers))
+            try:
+                conn.put_object(container, part_name, headers=headers, contents=None)
+            except ClientException as ex:
+                logging.error("Failed to copy %s: %s" % (name, ex.http_reason))
+                sys.exit(1)
+            # setup the manifest
+            headers = { 'x-object-manifest': "%s/%s" % (container, part_base_name) }
+            logging.debug("creating manifest %r/%r, %r" % (container, name, headers))
+            try:
+                conn.put_object(container, name, headers=headers, contents=None)
+            except ClientException as ex:
+                logging.error("Failed to store the manifest %s: %s" % (name, ex.http_reason))
+                sys.exit(1)
+            logging.debug("copy task done")
+        self.pending_copy_task = multiprocessing.Process(target=copy_task,
+                                                         args=(self.conn,
+                                                               self.container,
+                                                               self.name,
+                                                               self.part_name,
+                                                               self.part_base_name,
+                                                               ),
+                                                         )
+        self.pending_copy_task.start()
+
+    @translate_objectstorage_error
     def write(self, data):
         """Write data to the object."""
         if 'r' in self.mode:
             raise IOSError(EPERM, "File is opened for read")
-        self.obj.send_chunk(data)
 
+        # large file support
+        if self.split_size:
+            # data can be of any size, so we need to split it in split_size chunks
+            offs = 0
+            while offs < len(data):
+                if self.part_size + len(data) - offs > self.split_size:
+                    current_size = self.split_size-self.part_size
+                    logging.debug("data is to large (%r), using %s" % (len(data), current_size))
+                else:
+                    current_size = len(data)-offs
+                self.part_size += current_size
+                if not self.obj:
+                    self.obj = ChunkObject(self.conn, self.container, self.part_name, content_type=self.content_type)
+                self.obj.send_chunk(data[offs:offs+current_size])
+                offs += current_size
+                if self.part_size == self.split_size:
+                    logging.debug("current size is %r, split_file is %r" % (self.part_size, self.split_size))
+                    self.obj.finish_chunk()
+                    # this obj is not valid anymore, will create a new one if a new part is required
+                    self.obj = None
+                    # make it the first part
+                    if self.part == 0:
+                        self._start_copy_task()
+                    self.part_size = 0
+                    self.part += 1
+        else:
+            self.obj.send_chunk(data)
+
+    @translate_objectstorage_error
     def close(self):
         """Close the object and finish the data transfer."""
         if 'r' in self.mode:
             return
-        self.obj.finish_chunk()
+        if self.pending_copy_task:
+            logging.debug("waiting for a pending copy task...")
+            self.pending_copy_task.join()
+            logging.debug("wait is over")
+            if self.pending_copy_task.exitcode != 0:
+                raise IOSError(EIO, 'Failed to store the file')
+        if self.obj is not None:
+            self.obj.finish_chunk()
 
     def read(self, size=65536):
         """

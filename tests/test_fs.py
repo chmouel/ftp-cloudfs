@@ -40,7 +40,12 @@ class ObjectStorageFSTest(unittest.TestCase):
 
     def read_file(self, path):
         fd = self.cnx.open(path, "rb")
-        contents = fd.read()
+        contents = ''
+        while True:
+            chunk = fd.read()
+            if not chunk:
+                break
+            contents += chunk
         fd.close()
         return contents
 
@@ -442,6 +447,61 @@ class ObjectStorageFSTest(unittest.TestCase):
         fd.close()
 
         self.cnx.remove("testfile.txt")
+
+    def test_large_file_support(self):
+        ''' auto-split of large files '''
+        size = 1024**2
+        part_size = 64*1024
+        fd = self.cnx.open("bigfile.txt", "wb")
+        fd.split_size = part_size
+        content = ''
+        for part in xrange(size/4096):
+            content += chr(part)*4096
+            fd.write(chr(part)*4096)
+        fd.close()
+        self.assertEqual(self.cnx.listdir("."), ["bigfile.txt", "bigfile.txt.part"])
+        self.assertEqual(self.cnx.getsize("bigfile.txt"), size)
+        self.assertEqual(len(self.cnx.listdir("bigfile.txt.part/")), size/part_size)
+        self.assertEqual(self.cnx.getsize("bigfile.txt.part/000000"), part_size)
+        stored_content = self.read_file("/%s/bigfile.txt" % self.container)
+        self.assertEqual(stored_content, content)
+        self.cnx.remove("bigfile.txt")
+        for i in range(size/part_size):
+            self.cnx.remove("bigfile.txt.part/%.6d" % i)
+
+    def test_large_file_support_big_chunk(self):
+        ''' auto-split of large files, writing a single big chunk '''
+        size = 1024**2
+        part_size = 64*1024
+        fd = self.cnx.open("bigfile.txt", "wb")
+        fd.split_size = part_size
+        fd.write('0'*size)
+        fd.close()
+        self.assertEqual(self.cnx.listdir("."), ["bigfile.txt", "bigfile.txt.part"])
+        self.assertEqual(self.cnx.getsize("bigfile.txt"), size)
+        self.assertEqual(len(self.cnx.listdir("bigfile.txt.part/")), size/part_size)
+        self.assertEqual(self.cnx.getsize("bigfile.txt.part/000000"), part_size)
+        self.cnx.remove("bigfile.txt")
+        for i in xrange(size/part_size):
+            self.cnx.remove("bigfile.txt.part/%.6d" % i)
+
+    def test_large_file_support_content(self):
+        ''' auto-split of large files, reminder last part '''
+        size = 1024**2
+        part_size = 64*1000 # size % part_size != 0
+        content = ''
+        fd = self.cnx.open("bigfile.txt", "wb")
+        fd.split_size = part_size
+        for part in xrange(size/4096):
+            content += chr(part)*4096
+            fd.write(chr(part)*4096)
+        fd.close()
+        stored_content = self.read_file("/%s/bigfile.txt" % self.container)
+        self.assertEqual(len(stored_content), len(content))
+        self.assertEqual(stored_content, content)
+        self.cnx.remove("bigfile.txt")
+        for i in xrange(1+(size/part_size)):
+            self.cnx.remove("bigfile.txt.part/%.6d" % i)
 
     def tearDown(self):
         # Delete eveything from the container using the API

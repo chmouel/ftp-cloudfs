@@ -144,6 +144,20 @@ separator). Please check the example configuration file for further details.
 .. _Memset's Memstore Cloud Storage: https://www.memset.com/cloud/storage/
 
 
+LARGE FILE SUPPORT
+==================
+
+The object storage has a limit on the size of a single uploaded object (by default this is 5GB).
+Files larger than that can be split in parts and merged back on the fly using a manifest file.
+
+ftp-cloudfs supports this transparently with the *split-large-files* configuration token, setting
+it to the number of megabytes wanted to use for each part (disabled by default).
+
+When a *FILE* is larger than the specified amount of MB, a *FILE.part* directory will be created and
+*n* parts will be created splitting the file automatically. The original file name will be used to
+store the manifest. If the original file is downloaded, the parts will be served as it was a single file.
+
+
 SUPPORT
 =======
 
