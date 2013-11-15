@@ -1,3 +1,14 @@
+2013-11-15 Juan J. Martinez <juan@memset.com>
+
+ * 0.25
+  - Large file support added. The server will split big files in parts
+    to go over the object size limit of Swift. See 'split-large-files'
+    configuration token.
+
+    For further info please read:
+  
+    http://docs.openstack.org/developer/swift/overview_large_objects.html
+
 2013-11-08 Juan J. Martinez <juan@memset.com>
 
  * 0.24.3
