@@ -1,11 +1,11 @@
 2013-12-01 Juan J. Martinez <juan@memset.com>
 
- * 0.25.1
+ * 0.25.1, 0.25.2
   - Fixed a bug in ObjectStorageFS when used in "delayed authentication"
     mode that resulted in a information leak vulnerability in sftp-cloudfs.
 
-	Under certain conditions it was possible to serve a cached directory
-	listing from a different user.
+    Under certain conditions it was possible to serve a cached directory
+    listing from a different user.
 
 2013-11-15 Juan J. Martinez <juan@memset.com>
 
