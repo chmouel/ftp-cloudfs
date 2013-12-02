@@ -376,7 +376,7 @@ class ListDirCache(object):
     def key(self, index):
         """Returns a key for a user distributed cache."""
         logging.debug("cache key for %r" % [self.cffs.authurl, self.cffs.username, index])
-        if not hasattr(self, "_key_base"):
+        if not hasattr(self, "_key_base") and self.cffs.username:
             self._key_base = md5("%s%s" % (self.cffs.authurl, self.cffs.username)).hexdigest()
         return "%s-%s" % (self._key_base, md5(smart_str(index)).hexdigest())
 
