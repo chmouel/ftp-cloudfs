@@ -591,12 +591,11 @@ class ObjectStorageFS(object):
         """
         Create the Object Storage connection.
 
-        username - if None then don't make the connection
+        username - if None then don't make the connection (delayed auth)
         api_key
         authurl
         keystone - optional for auth 2.0 (keystone)
         """
-        self.username = username
         self.conn = None
         self.authurl = authurl
         self.keystone = keystone
@@ -638,6 +637,8 @@ class ObjectStorageFS(object):
         # force authentication
         self.conn.url, self.conn.token = self.conn.get_auth()
         self.conn.http_conn = None
+        # now we are authenticated and we have an username
+        self.username = username
 
     def close(self):
         """Dummy function which does nothing - no need to close"""
