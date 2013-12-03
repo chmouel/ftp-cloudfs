@@ -401,6 +401,8 @@ class ListDirCache(object):
         if last_modified:
             if "." in last_modified:
                 last_modified, microseconds = last_modified.rsplit(".", 1)
+                if microseconds.endswith("Z"):
+                    microseconds = microseconds[:-1]
                 microseconds = float("0."+microseconds)
             else:
                 microseconds = 0.0
