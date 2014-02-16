@@ -63,7 +63,10 @@ class ProxyConnection(Connection):
                     # only for one request
                     self.range_from = None
 
-                fn(method, url, body=body, headers=headers)
+                try:
+                    fn(method, url, body=body, headers=headers)
+                except(TypeError):
+                    fn(method, url, data=body, headers=headers)
             return request_x_forwarded_for
 
         parsed, conn = super(ProxyConnection, self).http_connection()
