@@ -63,9 +63,9 @@ class ProxyConnection(Connection):
                     # only for one request
                     self.range_from = None
 
-                try:
+                if 'body' in fn.func_code.co_varnames:
                     fn(method, url, body=body, headers=headers)
-                except(TypeError):
+                else:  # swiftclient 2.0, ported to Requests
                     fn(method, url, data=body, headers=headers)
             return request_x_forwarded_for
 
@@ -1013,4 +1013,3 @@ class ObjectStorageFS(object):
 
         meta = self.conn.head_object(container, name)
         return meta["etag"]
-
